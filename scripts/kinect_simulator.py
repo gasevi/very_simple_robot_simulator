@@ -112,7 +112,7 @@ class KinectSimulator( object ):
     self.depth_img_height = 480 # [pix]
     self.map_resolution = 0.01 # [m/pix]
 
-    self.show_depth_map = True
+    self.show_depth_map = False
     self.n_h_scans = 50
     self.n_v_scans = int( (self.depth_img_height * self.n_h_scans) / self.depth_img_width )
     self.view_depth_pix = 4.0 / self.map_resolution # [pix]

@@ -58,6 +58,9 @@
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>yocs_cmd_vel_mux</exec_depend>
+  <exec_depend>python-tk</exec_depend>
+  <exec_depend>python-imaging-imagetk</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
