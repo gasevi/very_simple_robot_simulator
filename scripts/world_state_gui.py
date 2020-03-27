@@ -3,6 +3,7 @@
 # Dependencies:
 #   apt install python-imaging-tk
   
+import os.path
 import signal
 import rospy
 from geometry_msgs.msg import Pose, Quaternion, Point
@@ -15,6 +16,7 @@ from Tkinter import *
 import tkFileDialog
 import cv2
 from cv_bridge import CvBridge
+import yaml
 
 from utils import CoordinateConverter
 
@@ -48,13 +50,6 @@ class WorldStateGUI( Frame ):
     self.canvas.pack( side = LEFT, expand = True, fill = BOTH )
     self.canvas.pilimage = None
     self.canvas.bgimage = None
-    #self.canvas.bind( '<ButtonPress-1>', self.click1 )
-    #self.canvas.bind( '<ButtonRelease-1>', self.click1_off )
-    #self.canvas.bind( '<B1-Motion>', self.click1_motion )
-    #self.canvas.bind( '<Double-Button-1>', self.double_click1 )
-    #self.canvas.bind( '<Button-4>', self.mouse_wheel )
-    #self.canvas.bind( '<Button-5>', self.mouse_wheel )
-    #self.canvas.bind( '<Key>', self.key_pressed )
     self.canvas.configure( cursor = 'left_ptr' )
     self.canvas.focus_set()
 
@@ -75,23 +70,33 @@ class WorldStateGUI( Frame ):
     self.pub_map.publish( occupancy_grid )
 
   def open_map( self ):
-    datafile = tkFileDialog.askopenfilename( title = 'Load Graph', filetypes = [ ( 'Data', ( '*.jpg', '*.png' ) ) ] )
-    if len( datafile ) == 0:
+    yamlfile = tkFileDialog.askopenfilename( title = 'Load Map', filetypes = [ ( 'YAML', ( '*.yaml' ) ) ] )
+    if len( yamlfile ) == 0:
       return
 
-    pilimage = PILImage.open( datafile )
-    pilimage = pilimage.resize( (self.width, self.height) )
-    bgimage = ImageTk.PhotoImage( pilimage )
+    with open( yamlfile ) as fd:
+      metadata = yaml.load( fd )
 
-    #self.canvas.config( width = self.width, height = self.height, scrollregion = ( 0, 0, bgimage.width(), bgimage.height() ) )
-    #self.canvas.config( xscrollcommand = self.hbar.set, yscrollcommand = self.vbar.set )
+    if not os.path.isabs( metadata['image'] ):
+      map_path = os.path.dirname( yamlfile )
+      map_filename = os.path.basename( metadata['image'] )
+      map_file = os.path.join( map_path, map_filename )
+
+    self.resolution = metadata['resolution'] # [m/pix]
+    self.robot_radio_pix = int( self.robot_radio / self.resolution )
+    self.converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.resolution )
+
+    pilimage = PILImage.open( map_file )
+    width, height = pilimage.size
+    bgimage = ImageTk.PhotoImage( pilimage )
 
     # keep a reference to the image to avoid the image being garbage collected
     self.canvas.pilimage = pilimage
     self.canvas.bgimage = bgimage
-    self.canvas.bgimagefile = datafile # TO-DO: remove this and just use bgimage to save screen
+    self.canvas.bgimagefile = map_file # TO-DO: remove this and just use bgimage to save screen
     self.canvas.delete( 'backgroundimg' )
     self.canvas.create_image( 0, 0, anchor = NW, image = bgimage, tags = 'backgroundimg' )
+    self.root.geometry( '%dx%d' % (width, height) )
 
     width, height = pilimage.size
 
