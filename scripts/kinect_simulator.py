@@ -103,23 +103,25 @@ def lidar_drawer( canvas, robot_pose, pixel_lidar ):
 class KinectSimulator( object ):
 
   def __init__( self ):
-    self.show_depth_map = True
-    self.mapimg = np.array( [] )
-    self.map_resolution = 0.006 # [m/pix]
-    self.cv_bridge = CvBridge()
     self.kinect_height = 0.3 # [m]
     self.wall_height = 0.5 # [m]
+    self.max_depth = 10.0 # [m]
     self.hfov = 57*np.pi/180.0 # [rad] (57 [degrees])
     self.vfov = 43*np.pi/180.0 # [rad] (43 [degrees])
-    self.depth_img_width = 640
-    self.depth_img_height = 480
+    self.depth_img_width = 640 # [pix]
+    self.depth_img_height = 480 # [pix]
+    self.map_resolution = 0.01 # [m/pix]
+
+    self.show_depth_map = True
     self.n_h_scans = 50
     self.n_v_scans = int( (self.depth_img_height * self.n_h_scans) / self.depth_img_width )
-    self.max_depth = 10.0 # [m]
     self.view_depth_pix = 4.0 / self.map_resolution # [pix]
-    self.converter = None
     self.h_beam_angles = np.linspace( self.hfov/2.0, -self.hfov/2.0, self.n_h_scans )
     self.v_beam_angles = np.linspace( self.vfov/2.0, -self.vfov/2.0, self.n_v_scans )
+
+    self.converter = None
+    self.mapimg = np.array( [] )
+    self.cv_bridge = CvBridge()
     rospy.Subscriber( '/real_pose', Pose, self.new_pose )
     rospy.Subscriber( 'map', OccupancyGrid, self.set_map )
     self.pub_depth = rospy.Publisher( 'camera/depth/image_raw', Image, queue_size = 10 )

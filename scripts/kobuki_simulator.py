@@ -17,19 +17,18 @@ class KobukiSimulator( object ):
     self.initial_x = initial_x
     self.initial_y = initial_y
     self.initial_yaw = initial_yaw
-    self.real_pose_publish_rate = 4.0
+    self.real_pose_publish_rate = 5.0 # [Hz]
 
     odom_quat = quaternion_from_euler( 0.0, 0.0, self.initial_yaw )
     self.current_pose = Pose( Point( self.initial_x, self.initial_y, 0.0 ), Quaternion( *odom_quat ) )
     self.current_speed = Twist( Vector3( 0.0, 0.0, 0.0 ), Vector3( 0.0, 0.0, 0.0 ) )
 
     self.odom_broadcaster = tf.TransformBroadcaster()
-    #rospy.Subscriber( 'mobile_base/commands/velocity', Twist, self.move )
     rospy.Subscriber( 'yocs_cmd_vel_mux/output/cmd_vel', Twist, self.move )
     rospy.Subscriber( 'yocs_cmd_vel_mux/active', String, self.velocity_state )
     rospy.Subscriber( 'initial_pose', Pose, self.set_initial_pose )
     self.pub_odom = rospy.Publisher( 'odom', Odometry, queue_size = 10 )
-    self.pub_real_pose = rospy.Publisher( 'real_pose', Pose, queue_size = 10 )
+    self.pub_real_pose = rospy.Publisher( 'real_pose', Pose, queue_size = 1 )
 
   def set_initial_pose( self, initial_pose ):
     self.current_pose = initial_pose
@@ -94,7 +93,7 @@ class KobukiSimulator( object ):
       odom.child_frame_id = 'base_link'
       odom.twist.twist = Twist( Vector3( vx, vy, 0.0 ), Vector3( 0.0, 0.0, yaw ) )
 
-      # publish the message
+      # publish the message every 1 [s]
       if count >= int( self.real_pose_publish_rate ): 
         self.pub_odom.publish( odom )
         count = 0
