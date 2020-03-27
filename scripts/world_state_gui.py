@@ -22,7 +22,7 @@ from utils import CoordinateConverter
 
 class WorldStateGUI( Frame ):
 
-  def __init__( self, width = 917, height = 483, resolution = 0.006 ):
+  def __init__( self, width = 500, height = 290, resolution = 0.01 ):
     self.width = width
     self.height = height
     self.resolution = resolution # [m/pix]
