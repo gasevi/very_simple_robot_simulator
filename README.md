@@ -12,4 +12,6 @@ rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO
 catkin_make
 ```
 
+## <span style="font-size: 4em;">Architecture</span>
 
+<img src="images/very_simple_robot_nav_design.png" width=800 >
