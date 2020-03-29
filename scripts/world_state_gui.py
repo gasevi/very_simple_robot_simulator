@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-# Dependencies:
-#   apt install python-imaging-tk
-  
 import os.path
 import signal
 import rospy
@@ -19,6 +16,76 @@ from cv_bridge import CvBridge
 import yaml
 
 from utils import CoordinateConverter
+
+
+class CanvasMode( object ):
+
+  def __init__( self, canvas ):
+    pass
+
+  def click1( self, event ):
+    pass
+
+  def click1_off( self, event ):
+    pass
+
+  def click1_motion( self, event ):
+    pass
+
+  def double_click1( self, event ):
+    pass
+
+
+class IdleMode( CanvasMode ):
+  pass
+
+
+class AddWallMode( CanvasMode ):
+
+  def __init__( self, canvas, id_offset = 0 ):
+    self.canvas = canvas
+    self.x = 0
+    self.y = 0
+    self.id_offset = id_offset
+    self.current_tag = ''
+
+  def id_offset( self, id_offset ):
+    self.id_offset = id_offset
+
+  def click1( self, event ):
+    self.x = self.canvas.canvasx( event.x )
+    self.y = self.canvas.canvasy( event.y )
+    self.current_tag = 'wall_' + str( self.id_offset )
+    self.canvas.create_line( self.x, self.y, self.x, self.y, width = 3, fill = 'black', tags = self.current_tag )
+
+  def click1_off( self, event ):
+    self.id_offset += 1
+
+  def click1_motion( self, event ):
+    canvasx = self.canvas.canvasx( event.x )
+    canvasy = self.canvas.canvasy( event.y )
+    deltax = canvasx - self.x
+    deltay = canvasy - self.y
+    coords = self.canvas.coords( self.current_tag )
+    coords[2] += deltax
+    coords[3] += deltay
+    self.canvas.coords( self.current_tag, *coords )
+    self.x = canvasx
+    self.y = canvasy
+
+  def reset( self ):
+    self.id_offset = 0
+
+
+class DeleteWallMode( CanvasMode ):
+
+  def __init__( self, canvas ):
+    self.canvas = canvas
+
+  def click1( self, event ):
+    current_tag = self.canvas.itemcget( CURRENT, 'tags' ).split( ' ' )[0]
+    self.canvas.delete( current_tag )
+
 
 class WorldStateGUI( Frame ):
 
@@ -48,14 +115,19 @@ class WorldStateGUI( Frame ):
 
     self.canvas = Canvas( self, width = width, height = height, bg = '#FFFFFF' )
     self.canvas.pack( side = LEFT, expand = True, fill = BOTH )
-    self.canvas.pilimage = None
-    self.canvas.bgimage = None
+    self.canvas.pilimage = PILImage.fromarray( 255*np.ones( (height, width, 3), dtype = np.uint8 ) )
+    self.canvas.bgimage = ImageTk.PhotoImage( self.canvas.pilimage )
+
+    self.canvas.bind( '<ButtonPress-1>', self.click1 )
+    self.canvas.bind( '<ButtonRelease-1>', self.click1_off )
+    self.canvas.bind( '<B1-Motion>', self.click1_motion )
+    self.canvas.bind( '<Key>', self.key_pressed )
     self.canvas.configure( cursor = 'left_ptr' )
     self.canvas.focus_set()
 
     signal.signal( signal.SIGINT, self.sigint_handler )
 
-    rospy.Subscriber( 'real_pose', Pose, self.refresh )
+    rospy.Subscriber( 'real_pose', Pose, self.update_robot_pose )
     self.pub_map_metadata = rospy.Publisher( 'map_metadata', MapMetaData, queue_size = 1, latch = True )
     self.pub_map = rospy.Publisher( 'map', OccupancyGrid, queue_size = 1, latch = True )
 
@@ -68,6 +140,12 @@ class WorldStateGUI( Frame ):
     og_data = np.zeros( height * width, dtype = np.uint8 )
     occupancy_grid = OccupancyGrid( og_header, map_metadata, og_data.tolist() )
     self.pub_map.publish( occupancy_grid )
+
+    self.statem = dict()
+    self.statem['idle_mode'] = IdleMode( self.canvas )
+    self.statem['add_wall_mode'] = AddWallMode( self.canvas )
+    self.statem['delete_wall_mode'] = DeleteWallMode( self.canvas )
+    self.cstate = 'idle_mode'
 
   def open_map( self ):
     yamlfile = tkFileDialog.askopenfilename( title = 'Load Map', filetypes = [ ( 'YAML', ( '*.yaml' ) ) ] )
@@ -87,34 +165,50 @@ class WorldStateGUI( Frame ):
     self.converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.resolution )
 
     pilimage = PILImage.open( map_file )
-    width, height = pilimage.size
+    self.width, self.height = pilimage.size
     bgimage = ImageTk.PhotoImage( pilimage )
 
+    self.root.geometry( '%dx%d' % (self.width, self.height) )
     # keep a reference to the image to avoid the image being garbage collected
     self.canvas.pilimage = pilimage
     self.canvas.bgimage = bgimage
-    self.canvas.bgimagefile = map_file # TO-DO: remove this and just use bgimage to save screen
     self.canvas.delete( 'backgroundimg' )
+    self.canvas.config( width = self.width, height = self.height )
     self.canvas.create_image( 0, 0, anchor = NW, image = bgimage, tags = 'backgroundimg' )
-    self.root.geometry( '%dx%d' % (width, height) )
 
-    width, height = pilimage.size
+    self.update_map()
 
-    map_quat = quaternion_from_euler( 0.0, 0.0, 0.0 )
-    map_pose = Pose( Point( 0.0, height * self.resolution, 0.0 ), Quaternion( *map_quat ) )
-    map_metadata = MapMetaData( rospy.Time.now(), self.resolution, width, height, map_pose )
-    self.pub_map_metadata.publish( map_metadata )
+  def click1( self, event ):
+    self.statem[self.cstate].click1( event )
 
-    og_header = Header( 0, rospy.Time.now(), 'map_frame' )
-    og_data = np.array( pilimage )
-    if len( og_data.shape ) > 2:
-      og_data = cv2.cvtColor( og_data, cv2.COLOR_BGR2GRAY )
-    og_data = ( 100 - ( og_data / 255.0 ) * 100 ).astype( np.uint8 )
-    og_data = og_data.reshape( height * width )
-    occupancy_grid = OccupancyGrid( og_header, map_metadata, og_data.tolist() )
-    self.pub_map.publish( occupancy_grid )
+  def click1_off( self, event ):
+    self.statem[self.cstate].click1_off( event )
+    if self.cstate == 'add_wall_mode':
+      self.cstate = 'idle_mode'
+      self.canvas.config( cursor = 'left_ptr' )
+    elif self.cstate == 'delete_wall_mode':
+      self.cstate = 'idle_mode'
+      self.canvas.config( cursor = 'left_ptr' )
+    self.update_map()
 
-  def refresh( self, pose ):
+  def click1_motion( self, event ):
+    self.statem[self.cstate].click1_motion( event )
+
+  def key_pressed( self, event ):
+    if event.keysym == 'w' and self.cstate != 'add_wall_mode':
+      self.cstate = 'add_wall_mode'
+      self.canvas.config( cursor = 'draft_small' )
+    elif event.keysym == 'e' and self.cstate == 'add_wall_mode':
+      self.cstate = 'idle_mode'
+      self.canvas.config( cursor = 'left_ptr' )
+    elif event.keysym == 'd' and self.cstate != 'delete_wall_mode':
+      self.cstate = 'delete_wall_mode'
+      self.canvas.config( cursor = 'X_cursor' )
+    elif event.keysym == 'd' and self.cstate == 'delete_wall_mode':
+      self.cstate = 'idle_mode'
+      self.canvas.config( cursor = 'left_ptr' )
+
+  def update_robot_pose( self, pose ):
     x, y = self.converter.cartesian2pixel( pose.position.x, pose.position.y )
     roll, pitch, yaw = euler_from_quaternion( ( pose.orientation.x,
                                                 pose.orientation.y,
@@ -133,6 +227,36 @@ class WorldStateGUI( Frame ):
     y1 = int( y - self.robot_radio_pix * np.sin( yaw ) )
     self.canvas.create_line( x, y, x1, y1, fill = 'red', tags = 'robot_direction' )
     #rospy.loginfo( 'x: %d, y: %d, yaw: %f' % ( x, y, yaw ) )
+
+  def update_map( self ):
+    background_image = self.canvas.pilimage.copy()
+    draw = PILImageDraw.Draw( background_image )
+    item_list = self.canvas.find_all()
+    for item in item_list:
+      objtype = self.canvas.type( item )
+      if objtype == 'line':
+        coords = self.canvas.coords( item )
+        params = ['fill', 'tags', 'arrow']
+        opt = dict()
+        for p in params:
+          opt[p] = self.canvas.itemcget( item, p )
+        draw.line( coords, fill = opt['fill'] )
+
+    width, height = background_image.size
+
+    map_quat = quaternion_from_euler( 0.0, 0.0, 0.0 )
+    map_pose = Pose( Point( 0.0, height * self.resolution, 0.0 ), Quaternion( *map_quat ) )
+    map_metadata = MapMetaData( rospy.Time.now(), self.resolution, width, height, map_pose )
+    self.pub_map_metadata.publish( map_metadata )
+
+    og_header = Header( 0, rospy.Time.now(), 'map_frame' )
+    og_data = np.array( background_image )
+    if len( og_data.shape ) > 2:
+      og_data = cv2.cvtColor( og_data, cv2.COLOR_BGR2GRAY )
+    og_data = ( 100 - ( og_data / 255.0 ) * 100 ).astype( np.uint8 )
+    og_data = og_data.reshape( height * width )
+    occupancy_grid = OccupancyGrid( og_header, map_metadata, og_data.tolist() )
+    self.pub_map.publish( occupancy_grid )
 
   def mainloop( self ):
     self.root.mainloop()
