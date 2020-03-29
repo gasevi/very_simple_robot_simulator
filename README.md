@@ -12,4 +12,13 @@ rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO
 catkin_make
 ```
 
+## <span style="font-size: 4em;">Include package in your ROS environment</span>
 
+```sh
+echo "source <your_catkin_ws>/devel/setup.bash" >> .bashrc 
+source .bashrc
+```
+
+## <span style="font-size: 4em;">Architecture</span>
+
+<img src="images/very_simple_robot_nav_design.png" width=800 >
