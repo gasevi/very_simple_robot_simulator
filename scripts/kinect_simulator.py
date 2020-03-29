@@ -89,17 +89,6 @@ def build_pixel_lidar( global_map, pose, fov, n_scans = 100, view_depth = 60 ):
     distance_sensor.append( d )
   return pixel_lidar, distance_sensor
 
-def lidar_drawer( canvas, robot_pose, pixel_lidar ):
-  for beam in pixel_lidar:
-    for y, x in beam:
-      canvas[y][x][0] = 0
-      canvas[y][x][1] = 0
-      canvas[y][x][2] = 255
-  x, y, yaw = robot_pose
-  canvas[y][x][0] = 255
-  canvas[y][x][1] = 0
-  canvas[y][x][2] = 0
-
 class KinectSimulator( object ):
 
   def __init__( self ):
@@ -110,6 +99,7 @@ class KinectSimulator( object ):
     self.vfov = 43*np.pi/180.0 # [rad] (43 [degrees])
     self.depth_img_width = 640 # [pix]
     self.depth_img_height = 480 # [pix]
+    self.min_valid_distance = 0.45 # [m]
     self.map_resolution = 0.01 # [m/pix]
 
     self.show_depth_map = False
@@ -154,13 +144,14 @@ class KinectSimulator( object ):
       if ground_angle < self.vfov/2.0:
         ground_indices = np.where( self.v_beam_angles < -ground_angle )[0]
         for i in ground_indices:
-          depth_image[i,c] = self.kinect_height / np.sin( abs( self.v_beam_angles[i] ) )
+          ground_d = self.kinect_height / np.sin( abs( self.v_beam_angles[i] ) )
+          depth_image[i,c] = ground_d if ground_d >= self.min_valid_distance else float( 'nan' )
         ground_limit_index = ground_indices.min()
 
       if ceiling_limit_index < 0:
-        depth_image[0:ground_limit_index,c] = d
+        depth_image[0:ground_limit_index,c] = d if d >= self.min_valid_distance else float( 'nan' )
       else:
-        depth_image[ceiling_limit_index+1:ground_limit_index,c] = d
+        depth_image[ceiling_limit_index+1:ground_limit_index,c] = d if d >= self.min_valid_distance else float( 'nan' )
     depth_image = cv2.resize( depth_image, ( self.depth_img_width, self.depth_img_height ) )
 
     if self.show_depth_map:
