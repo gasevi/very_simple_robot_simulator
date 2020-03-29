@@ -40,6 +40,20 @@ class IdleMode( CanvasMode ):
   pass
 
 
+class SetRobotLocationMode( CanvasMode ):
+
+  def __init__( self, canvas, publisher ):
+    self.canvas = canvas
+    self.publisher = publisher
+
+  def click1( self, event ):
+    x = self.canvas.canvasx( event.x )
+    y = self.canvas.canvasy( event.y )
+    quat = quaternion_from_euler( 0.0, 0.0, 0.0 )
+    pix_pose = Pose( Point( x, y, 0.0 ), Quaternion( *quat ) )
+    self.publisher.publish( pix_pose )
+
+
 class AddWallMode( CanvasMode ):
 
   def __init__( self, canvas, id_offset = 0 ):
@@ -130,6 +144,7 @@ class WorldStateGUI( Frame ):
     rospy.Subscriber( 'real_pose', Pose, self.update_robot_pose )
     self.pub_map_metadata = rospy.Publisher( 'map_metadata', MapMetaData, queue_size = 1, latch = True )
     self.pub_map = rospy.Publisher( 'map', OccupancyGrid, queue_size = 1, latch = True )
+    self.pub_pixel_pose = rospy.Publisher( 'pixel_pose', Pose, queue_size = 10 )
 
     map_quat = quaternion_from_euler( 0.0, 0.0, 0.0 )
     map_pose = Pose( Point( 0.0, height * self.resolution, 0.0 ), Quaternion( *map_quat ) )
@@ -143,6 +158,7 @@ class WorldStateGUI( Frame ):
 
     self.statem = dict()
     self.statem['idle_mode'] = IdleMode( self.canvas )
+    self.statem['set_robot_loc_mode'] = SetRobotLocationMode( self.canvas, self.pub_pixel_pose )
     self.statem['add_wall_mode'] = AddWallMode( self.canvas )
     self.statem['delete_wall_mode'] = DeleteWallMode( self.canvas )
     self.cstate = 'idle_mode'
@@ -183,10 +199,7 @@ class WorldStateGUI( Frame ):
 
   def click1_off( self, event ):
     self.statem[self.cstate].click1_off( event )
-    if self.cstate == 'add_wall_mode':
-      self.cstate = 'idle_mode'
-      self.canvas.config( cursor = 'left_ptr' )
-    elif self.cstate == 'delete_wall_mode':
+    if self.cstate != 'idle_mode':
       self.cstate = 'idle_mode'
       self.canvas.config( cursor = 'left_ptr' )
     self.update_map()
@@ -197,7 +210,7 @@ class WorldStateGUI( Frame ):
   def key_pressed( self, event ):
     if event.keysym == 'w' and self.cstate != 'add_wall_mode':
       self.cstate = 'add_wall_mode'
-      self.canvas.config( cursor = 'draft_small' )
+      self.canvas.config( cursor = 'pencil' )
     elif event.keysym == 'w' and self.cstate == 'add_wall_mode':
       self.cstate = 'idle_mode'
       self.canvas.config( cursor = 'left_ptr' )
@@ -205,6 +218,12 @@ class WorldStateGUI( Frame ):
       self.cstate = 'delete_wall_mode'
       self.canvas.config( cursor = 'X_cursor' )
     elif event.keysym == 'd' and self.cstate == 'delete_wall_mode':
+      self.cstate = 'idle_mode'
+      self.canvas.config( cursor = 'left_ptr' )
+    elif event.keysym == 'l' and self.cstate != 'set_robot_loc_mode':
+      self.cstate = 'set_robot_loc_mode'
+      self.canvas.config( cursor = 'hand2' )
+    elif event.keysym == 'l' and self.cstate == 'set_robot_loc_mode':
       self.cstate = 'idle_mode'
       self.canvas.config( cursor = 'left_ptr' )
 
