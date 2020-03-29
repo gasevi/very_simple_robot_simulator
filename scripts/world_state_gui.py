@@ -198,7 +198,7 @@ class WorldStateGUI( Frame ):
     if event.keysym == 'w' and self.cstate != 'add_wall_mode':
       self.cstate = 'add_wall_mode'
       self.canvas.config( cursor = 'draft_small' )
-    elif event.keysym == 'e' and self.cstate == 'add_wall_mode':
+    elif event.keysym == 'w' and self.cstate == 'add_wall_mode':
       self.cstate = 'idle_mode'
       self.canvas.config( cursor = 'left_ptr' )
     elif event.keysym == 'd' and self.cstate != 'delete_wall_mode':
