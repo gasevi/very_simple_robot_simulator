@@ -21,4 +21,4 @@ source .bashrc
 
 ## <span style="font-size: 4em;">Architecture</span>
 
-<img src="images/very_simple_robot_nav_design.png?" width=800 >
+<img src="images/very_simple_robot_nav_design.png" width=800 >
