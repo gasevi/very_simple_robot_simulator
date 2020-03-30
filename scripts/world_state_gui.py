@@ -220,12 +220,12 @@ class WorldStateGUI( Frame ):
     elif event.keysym == 'd' and self.cstate == 'delete_wall_mode':
       self.cstate = 'idle_mode'
       self.canvas.config( cursor = 'left_ptr' )
-    elif event.keysym == 'l' and self.cstate != 'set_robot_loc_mode':
-      self.cstate = 'set_robot_loc_mode'
-      self.canvas.config( cursor = 'hand2' )
-    elif event.keysym == 'l' and self.cstate == 'set_robot_loc_mode':
-      self.cstate = 'idle_mode'
-      self.canvas.config( cursor = 'left_ptr' )
+    #elif event.keysym == 'l' and self.cstate != 'set_robot_loc_mode':
+    #  self.cstate = 'set_robot_loc_mode'
+    #  self.canvas.config( cursor = 'hand2' )
+    #elif event.keysym == 'l' and self.cstate == 'set_robot_loc_mode':
+    #  self.cstate = 'idle_mode'
+    #  self.canvas.config( cursor = 'left_ptr' )
 
   def update_robot_pose( self, pose ):
     x, y = self.converter.cartesian2pixel( pose.position.x, pose.position.y )
