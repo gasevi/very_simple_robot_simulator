@@ -233,18 +233,24 @@ class WorldStateGUI( Frame ):
                                                 pose.orientation.y,
                                                 pose.orientation.z,
                                                 pose.orientation.w ) )
-    self.canvas.delete( 'robot' )
-    self.canvas.delete( 'robot_direction' )
-    self.canvas.create_oval( x-self.robot_radio_pix,
-                             y-self.robot_radio_pix,
-                             x+self.robot_radio_pix,
-                             y+self.robot_radio_pix,
-                             outline = 'red',
-                             fill = '',
-                             tags = 'robot' )
-    x1 = int( x + self.robot_radio_pix * np.cos( yaw ) )
-    y1 = int( y - self.robot_radio_pix * np.sin( yaw ) )
-    self.canvas.create_line( x, y, x1, y1, fill = 'red', tags = 'robot_direction' )
+    if len( self.canvas.find_withtag( 'robot' ) ) == 0:
+      self.canvas.create_oval( x-self.robot_radio_pix,
+                               y-self.robot_radio_pix,
+                               x+self.robot_radio_pix,
+                               y+self.robot_radio_pix,
+                               outline = 'red',
+                               fill = 'red',
+                               tags = 'robot' )
+      x1 = int( x + self.robot_radio_pix * np.cos( yaw ) )
+      y1 = int( y - self.robot_radio_pix * np.sin( yaw ) )
+      self.canvas.create_line( x, y, x1, y1, fill = 'white', width = 2, tags = 'robot_direction' )
+    else:
+      coords = [x-self.robot_radio_pix, y-self.robot_radio_pix, x+self.robot_radio_pix, y+self.robot_radio_pix]
+      self.canvas.coords( 'robot', *coords )
+      x1 = int( x + self.robot_radio_pix * np.cos( yaw ) )
+      y1 = int( y - self.robot_radio_pix * np.sin( yaw ) )
+      coords = [x, y, x1, y1]
+      self.canvas.coords( 'robot_direction', *coords )
     #rospy.loginfo( 'x: %d, y: %d, yaw: %f' % ( x, y, yaw ) )
 
   def update_map( self ):
