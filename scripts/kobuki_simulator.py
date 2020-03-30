@@ -18,6 +18,7 @@ class KobukiSimulator( object ):
     self.initial_y = initial_y
     self.initial_yaw = initial_yaw
     self.real_pose_publish_rate = 5.0 # [Hz]
+    self.simulate_ground_friction = True
 
     odom_quat = quaternion_from_euler( 0.0, 0.0, self.initial_yaw )
     self.current_pose = Pose( Point( self.initial_x, self.initial_y, 0.0 ), Quaternion( *odom_quat ) )
@@ -34,16 +35,53 @@ class KobukiSimulator( object ):
     self.current_pose = initial_pose
     self.pub_real_pose.publish( self.current_pose )
 
-  def update_real_pose( self, delta_x, delta_y, delta_yaw ):
+  def update_real_pose( self, vx, vy, vyaw, dt ):
     roll, pitch, yaw = euler_from_quaternion( ( self.current_pose.orientation.x,
                                                 self.current_pose.orientation.y,
                                                 self.current_pose.orientation.z,
                                                 self.current_pose.orientation.w ) )
-    quat = quaternion_from_euler( roll, pitch, yaw + delta_yaw )
+
+    delta_x = (vx * np.cos( yaw + self.initial_yaw ) - vy * np.sin( yaw + self.initial_yaw )) * dt
+    delta_y = (vx * np.sin( yaw + self.initial_yaw ) + vy * np.cos( yaw + self.initial_yaw )) * dt
+    if self.simulate_ground_friction:
+      delta_yaw = 0.9 * vyaw * dt
+    else:
+      delta_yaw = vyaw * dt
+
     x = self.current_pose.position.x + delta_x
     y = self.current_pose.position.y + delta_y
+    yaw = yaw + delta_yaw
+
+    quat = quaternion_from_euler( roll, pitch, yaw )
     self.current_pose = Pose( Point( x, y, 0.0 ), Quaternion( *quat ) )
     self.pub_real_pose.publish( self.current_pose )
+
+  def publish_odom( self, x, y, yaw, vx, vy, vyaw, current_time ):
+    # since all odometry is 6DOF we'll need a quaternion created from yaw
+    odom_quat = quaternion_from_euler( 0.0, 0.0, yaw )
+
+    # first, we'll publish the transform over tf
+    self.odom_broadcaster.sendTransform(
+                                         (x, y, 0.0),
+                                         odom_quat,
+                                         current_time,
+                                         'base_link',
+                                         'odom'
+                                       )
+
+    # next, we'll publish the odometry message over ROS
+    odom = Odometry()
+    odom.header.stamp = current_time
+    odom.header.frame_id = 'odom'
+
+    # set the position
+    odom.pose.pose = Pose( Point( x, y, 0.0 ), Quaternion( *odom_quat ) )
+
+    # set the velocity
+    odom.child_frame_id = 'base_link'
+    odom.twist.twist = Twist( Vector3( vx, vy, 0.0 ), Vector3( 0.0, 0.0, vyaw ) )
+
+    self.pub_odom.publish( odom )
 
   def main_loop( self ):
     x = 0.0
@@ -57,45 +95,21 @@ class KobukiSimulator( object ):
     while not rospy.is_shutdown():
       vx, vy, vyaw = self.get_current_speed()
       current_time = rospy.Time.now()
-
       dt = (current_time - last_time).to_sec()
+
+      self.update_real_pose( vx, vy, vyaw, dt )
+
       delta_x = (vx * np.cos( yaw + self.initial_yaw ) - vy * np.sin( yaw + self.initial_yaw )) * dt
       delta_y = (vx * np.sin( yaw + self.initial_yaw ) + vy * np.cos( yaw + self.initial_yaw )) * dt
       delta_yaw = vyaw * dt
 
-      x += delta_x;
-      y += delta_y;
-      yaw += delta_yaw;
-
-      self.update_real_pose( delta_x, delta_y, delta_yaw )
-
-      # since all odometry is 6DOF we'll need a quaternion created from yaw
-      odom_quat = quaternion_from_euler( 0.0, 0.0, yaw )
-
-      # first, we'll publish the transform over tf
-      self.odom_broadcaster.sendTransform(
-                                           (x, y, 0.0),
-                                           odom_quat,
-                                           current_time,
-                                           'base_link',
-                                           'odom'
-                                         )
-
-      # next, we'll publish the odometry message over ROS
-      odom = Odometry()
-      odom.header.stamp = current_time
-      odom.header.frame_id = 'odom'
-
-      # set the position
-      odom.pose.pose = Pose( Point( x, y, 0.0 ), Quaternion( *odom_quat ) )
-
-      # set the velocity
-      odom.child_frame_id = 'base_link'
-      odom.twist.twist = Twist( Vector3( vx, vy, 0.0 ), Vector3( 0.0, 0.0, yaw ) )
+      x += delta_x
+      y += delta_y
+      yaw += delta_yaw
 
       # publish the message every 1 [s]
       if count >= int( self.real_pose_publish_rate ): 
-        self.pub_odom.publish( odom )
+        self.publish_odom( x, y, yaw, vx, vy, vyaw, current_time )
         count = 0
       count += 1
 
