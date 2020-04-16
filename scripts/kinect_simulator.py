@@ -114,7 +114,7 @@ class KinectSimulator( object ):
     self.cv_bridge = CvBridge()
     rospy.Subscriber( '/real_pose', Pose, self.new_pose )
     rospy.Subscriber( 'map', OccupancyGrid, self.set_map )
-    self.pub_depth = rospy.Publisher( 'camera/depth/image_raw', Image, queue_size = 10 )
+    self.pub_depth = rospy.Publisher( 'camera/depth/image_raw', Image, queue_size = 1 )
 
   def new_pose( self, pose ):
     if len( self.mapimg ) == 0:
