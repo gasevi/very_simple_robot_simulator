@@ -26,10 +26,10 @@ class CanvasMode( object ):
   def click1( self, event ):
     pass
 
-  def click1_off( self, event ):
+  def click1_motion( self, event ):
     pass
 
-  def click1_motion( self, event ):
+  def click1_off( self, event ):
     pass
 
   def double_click1( self, event ):
@@ -40,18 +40,91 @@ class IdleMode( CanvasMode ):
   pass
 
 
-class SetRobotLocationMode( CanvasMode ):
+class SetRobotPoseMode( CanvasMode ):
 
-  def __init__( self, canvas, publisher ):
+  def __init__( self, canvas, set_initial_pose_cb ):
     self.canvas = canvas
-    self.publisher = publisher
+    self.set_initial_pose_cb = set_initial_pose_cb
+    self.x = 0
+    self.y = 0
+    self.yaw = 0
 
   def click1( self, event ):
-    x = self.canvas.canvasx( event.x )
-    y = self.canvas.canvasy( event.y )
-    quat = quaternion_from_euler( 0.0, 0.0, 0.0 )
-    pix_pose = Pose( Point( x, y, 0.0 ), Quaternion( *quat ) )
-    self.publisher.publish( pix_pose )
+    canvasx = self.canvas.canvasx( event.x )
+    canvasy = self.canvas.canvasy( event.y )
+    self.x, self.y, self.yaw = self.get_current_pose()
+    current_tag = self.canvas.itemcget( CURRENT, 'tags' ).split( ' ' )[0]
+    if current_tag.startswith( 'robot' ):
+      coords = self.canvas.coords( 'robot' )
+      radius = ( coords[0] - coords[2] )/2
+      coords = [canvasx-radius, canvasy-radius, canvasx+radius, canvasy+radius]
+      self.canvas.coords( 'robot', *coords )
+      coords = self.canvas.coords( 'robot_direction' )
+      deltax = canvasx - coords[0]
+      deltay = canvasy - coords[1]
+      coords[0] += deltax
+      coords[1] += deltay
+      coords[2] += deltax
+      coords[3] += deltay
+      self.canvas.coords( 'robot_direction', *coords )
+      self.x = canvasx
+      self.y = canvasy
+    else:
+      coords = self.canvas.coords( 'robot' )
+      radius = ( coords[2] - coords[0] )/2
+      x = coords[0] + radius
+      y = coords[1] + radius
+      yaw = np.arctan2( -( canvasy - y), canvasx - x )
+      x1 = int( x + radius * np.cos( yaw ) )
+      y1 = int( y - radius * np.sin( yaw ) )
+      coords = [x, y, x1, y1]
+      self.canvas.coords( 'robot_direction', *coords )
+      self.yaw = yaw
+
+  def click1_motion( self, event ):
+    canvasx = self.canvas.canvasx( event.x )
+    canvasy = self.canvas.canvasy( event.y )
+    current_tag = self.canvas.itemcget( CURRENT, 'tags' ).split( ' ' )[0]
+    if current_tag.startswith( 'robot' ):
+      deltax = canvasx - self.x
+      deltay = canvasy - self.y
+      coords = self.canvas.coords( 'robot' )
+      coords[0] += deltax
+      coords[1] += deltay
+      coords[2] += deltax
+      coords[3] += deltay
+      self.canvas.coords( 'robot', *coords )
+      coords = self.canvas.coords( 'robot_direction' )
+      coords[0] += deltax
+      coords[1] += deltay
+      coords[2] += deltax
+      coords[3] += deltay
+      self.canvas.coords( 'robot_direction', *coords )
+      self.x = canvasx
+      self.y = canvasy
+    else:
+      coords = self.canvas.coords( 'robot' )
+      radius = ( coords[2] - coords[0] )/2
+      x = coords[0] + radius
+      y = coords[1] + radius
+      yaw = np.arctan2( -( canvasy - y), canvasx - x )
+      x1 = int( x + radius * np.cos( yaw ) )
+      y1 = int( y - radius * np.sin( yaw ) )
+      coords = [x, y, x1, y1]
+      self.canvas.coords( 'robot_direction', *coords )
+      self.yaw = yaw
+
+  def click1_off( self, event ):
+    self.set_initial_pose_cb( [self.x, self.y, self.yaw] )
+
+  def get_current_pose( self ):
+    coords = self.canvas.coords( 'robot' )
+    radius = ( coords[2] - coords[0] )/2
+    x = coords[0] + radius
+    y = coords[1] + radius
+    coords = self.canvas.coords( 'robot_direction' )
+    yaw = np.arctan2( -(coords[3] - coords[1]), coords[2] - coords[0] )
+    return x, y, yaw
 
 
 class AddWallMode( CanvasMode ):
@@ -72,9 +145,6 @@ class AddWallMode( CanvasMode ):
     self.current_tag = 'wall_' + str( self.id_offset )
     self.canvas.create_line( self.x, self.y, self.x, self.y, width = 3, fill = 'black', tags = self.current_tag )
 
-  def click1_off( self, event ):
-    self.id_offset += 1
-
   def click1_motion( self, event ):
     canvasx = self.canvas.canvasx( event.x )
     canvasy = self.canvas.canvasy( event.y )
@@ -87,6 +157,9 @@ class AddWallMode( CanvasMode ):
     self.x = canvasx
     self.y = canvasy
 
+  def click1_off( self, event ):
+    self.id_offset += 1
+
   def reset( self ):
     self.id_offset = 0
 
@@ -98,7 +171,8 @@ class DeleteWallMode( CanvasMode ):
 
   def click1( self, event ):
     current_tag = self.canvas.itemcget( CURRENT, 'tags' ).split( ' ' )[0]
-    self.canvas.delete( current_tag )
+    if current_tag.startswith( 'wall_' ):
+      self.canvas.delete( current_tag )
 
 
 class WorldStateGUI( Frame ):
@@ -113,8 +187,6 @@ class WorldStateGUI( Frame ):
     self.robot_radio_pix = int( self.robot_radio / self.resolution )
     self.converter = CoordinateConverter( 0.0, self.height * self.resolution, self.resolution )
     self.cv_bridge = CvBridge()
-
-    signal.signal( signal.SIGINT, self.sigint_handler )
 
     self.root = Tk()
     self.root.geometry( '%dx%d' % (self.width, self.height) )
@@ -146,7 +218,7 @@ class WorldStateGUI( Frame ):
 
     self.statem = dict()
     self.statem['idle_mode'] = IdleMode( self.canvas )
-    #self.statem['set_robot_loc_mode'] = SetRobotLocationMode( self.canvas, self.pub_pixel_pose )
+    self.statem['set_robot_pose_mode'] = SetRobotPoseMode( self.canvas, self.send_initial_pose )
     self.statem['add_wall_mode'] = AddWallMode( self.canvas )
     self.statem['delete_wall_mode'] = DeleteWallMode( self.canvas )
     self.cstate = 'idle_mode'
@@ -154,7 +226,7 @@ class WorldStateGUI( Frame ):
     rospy.Subscriber( 'real_pose', Pose, self.update_robot_pose )
     self.pub_map_metadata = rospy.Publisher( 'map_metadata', MapMetaData, queue_size = 1, latch = True )
     self.pub_map = rospy.Publisher( 'map', OccupancyGrid, queue_size = 1, latch = True )
-    self.pub_pixel_pose = rospy.Publisher( 'pixel_pose', Pose, queue_size = 10 )
+    self.pub_initial_pose = rospy.Publisher( 'initial_pose', Pose, queue_size = 1 )
 
     self.update_map()
 
@@ -203,15 +275,16 @@ class WorldStateGUI( Frame ):
   def click1( self, event ):
     self.statem[self.cstate].click1( event )
 
+  def click1_motion( self, event ):
+    self.statem[self.cstate].click1_motion( event )
+
   def click1_off( self, event ):
     self.statem[self.cstate].click1_off( event )
+    if self.cstate == 'add_wall_mode' or self.cstate == 'delete_wall_mode':
+      self.update_map()
     if self.cstate != 'idle_mode':
       self.cstate = 'idle_mode'
       self.canvas.config( cursor = 'left_ptr' )
-    self.update_map()
-
-  def click1_motion( self, event ):
-    self.statem[self.cstate].click1_motion( event )
 
   def key_pressed( self, event ):
     if event.keysym == 'w' and self.cstate != 'add_wall_mode':
@@ -226,38 +299,57 @@ class WorldStateGUI( Frame ):
     elif event.keysym == 'd' and self.cstate == 'delete_wall_mode':
       self.cstate = 'idle_mode'
       self.canvas.config( cursor = 'left_ptr' )
-    #elif event.keysym == 'l' and self.cstate != 'set_robot_loc_mode':
-    #  self.cstate = 'set_robot_loc_mode'
-    #  self.canvas.config( cursor = 'hand2' )
-    #elif event.keysym == 'l' and self.cstate == 'set_robot_loc_mode':
-    #  self.cstate = 'idle_mode'
-    #  self.canvas.config( cursor = 'left_ptr' )
+    elif event.keysym == 'p' and self.cstate != 'set_robot_pose_mode':
+      self.cstate = 'set_robot_pose_mode'
+      self.canvas.config( cursor = 'hand1' )
+    elif event.keysym == 'p' and self.cstate == 'set_robot_pose_mode':
+      robot_pose = self.get_current_pose()
+      self.send_initial_pose( robot_pose )
+      self.cstate = 'idle_mode'
+      self.canvas.config( cursor = 'left_ptr' )
+
+  def get_current_pose( self ):
+    coords = self.canvas.coords( 'robot' )
+    radius = ( coords[2] - coords[0] )/2
+    x = coords[0] + radius
+    y = coords[1] + radius
+    coords = self.canvas.coords( 'robot_direction' )
+    yaw = np.arctan2( -(coords[3] - coords[1]), coords[2] - coords[0] )
+    return x, y, yaw
+
+  def send_initial_pose( self, robot_pose ):
+    x, y = self.converter.pixel2metric( robot_pose[0], robot_pose[1] )
+    yaw = robot_pose[2]
+    quat = quaternion_from_euler( 0.0, 0.0, yaw )
+    pix_pose = Pose( Point( x, y, 0.0 ), Quaternion( *quat ) )
+    self.pub_initial_pose.publish( pix_pose )
 
   def update_robot_pose( self, pose ):
-    x, y = self.converter.cartesian2pixel( pose.position.x, pose.position.y )
-    roll, pitch, yaw = euler_from_quaternion( ( pose.orientation.x,
-                                                pose.orientation.y,
-                                                pose.orientation.z,
-                                                pose.orientation.w ) )
-    if len( self.canvas.find_withtag( 'robot' ) ) == 0:
-      self.canvas.create_oval( x-self.robot_radio_pix,
-                               y-self.robot_radio_pix,
-                               x+self.robot_radio_pix,
-                               y+self.robot_radio_pix,
-                               outline = 'red',
-                               fill = 'red',
-                               tags = 'robot' )
-      x1 = int( x + self.robot_radio_pix * np.cos( yaw ) )
-      y1 = int( y - self.robot_radio_pix * np.sin( yaw ) )
-      self.canvas.create_line( x, y, x1, y1, fill = 'white', width = 2, tags = 'robot_direction' )
-    else:
-      coords = [x-self.robot_radio_pix, y-self.robot_radio_pix, x+self.robot_radio_pix, y+self.robot_radio_pix]
-      self.canvas.coords( 'robot', *coords )
-      x1 = int( x + self.robot_radio_pix * np.cos( yaw ) )
-      y1 = int( y - self.robot_radio_pix * np.sin( yaw ) )
-      coords = [x, y, x1, y1]
-      self.canvas.coords( 'robot_direction', *coords )
-    #rospy.loginfo( 'x: %d, y: %d, yaw: %f' % ( x, y, yaw ) )
+    if self.cstate != 'set_robot_pose_mode':
+      x, y = self.converter.metric2pixel( pose.position.x, pose.position.y )
+      roll, pitch, yaw = euler_from_quaternion( ( pose.orientation.x,
+                                                  pose.orientation.y,
+                                                  pose.orientation.z,
+                                                  pose.orientation.w ) )
+      if len( self.canvas.find_withtag( 'robot' ) ) == 0:
+        self.canvas.create_oval( x-self.robot_radio_pix,
+                                 y-self.robot_radio_pix,
+                                 x+self.robot_radio_pix,
+                                 y+self.robot_radio_pix,
+                                 outline = 'red',
+                                 fill = 'red',
+                                 tags = 'robot' )
+        x1 = int( x + self.robot_radio_pix * np.cos( yaw ) )
+        y1 = int( y - self.robot_radio_pix * np.sin( yaw ) )
+        self.canvas.create_line( x, y, x1, y1, fill = 'white', width = 2, tags = 'robot_direction' )
+      else:
+        coords = [x-self.robot_radio_pix, y-self.robot_radio_pix, x+self.robot_radio_pix, y+self.robot_radio_pix]
+        self.canvas.coords( 'robot', *coords )
+        x1 = int( x + self.robot_radio_pix * np.cos( yaw ) )
+        y1 = int( y - self.robot_radio_pix * np.sin( yaw ) )
+        coords = [x, y, x1, y1]
+        self.canvas.coords( 'robot_direction', *coords )
+      #rospy.loginfo( 'x: %d, y: %d, yaw: %f' % ( x, y, yaw ) )
 
   def update_map( self ):
     background_image = self.canvas.pilimage.copy()
@@ -290,17 +382,21 @@ class WorldStateGUI( Frame ):
   def mainloop( self ):
     self.root.mainloop()
 
-  def sigint_handler( self, sig, frame ):
+  def sigint_handler( self, signum, frame ):
+    rospy.loginfo( 'world_state_gui is shutting down' )
     self.root.quit()
     self.root.update()
+    rospy.signal_shutdown( 'Signal received [%d]' % ( signum ) )
 
   def on_exit( self ):
     self.quit()
 
 
 if __name__ == '__main__':
-  rospy.init_node( 'world_state_gui' )
+  rospy.init_node( 'world_state_gui', disable_signals = True )
   world_state_gui = WorldStateGUI()
+  signal.signal( signal.SIGINT, world_state_gui.sigint_handler )
+  signal.signal( signal.SIGTERM, world_state_gui.sigint_handler )
   world_state_gui.mainloop()
 
 
