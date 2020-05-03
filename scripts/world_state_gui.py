@@ -136,9 +136,6 @@ class AddWallMode( CanvasMode ):
     self.id_offset = id_offset
     self.current_tag = ''
 
-  def id_offset( self, id_offset ):
-    self.id_offset = id_offset
-
   def click1( self, event ):
     self.x = self.canvas.canvasx( event.x )
     self.y = self.canvas.canvasy( event.y )
@@ -356,14 +353,14 @@ class WorldStateGUI( Frame ):
     draw = PILImageDraw.Draw( background_image )
     item_list = self.canvas.find_all()
     for item in item_list:
-      objtype = self.canvas.type( item )
-      if objtype == 'line':
+      tag = self.canvas.gettags( item )[0]
+      if tag.startswith( 'wall_' ):
         coords = self.canvas.coords( item )
-        params = ['fill', 'tags', 'arrow']
+        params = ['fill', 'width']
         opt = dict()
         for p in params:
           opt[p] = self.canvas.itemcget( item, p )
-        draw.line( coords, fill = opt['fill'] )
+        draw.line( coords, fill = opt['fill'], width = int( float( opt['width'] ) ) )
 
     width, height = background_image.size
 
