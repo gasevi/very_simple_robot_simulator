@@ -12,7 +12,7 @@ from cv_bridge import CvBridge
 from utils import CoordinateConverter
 
 def sawtooth( x ):
-   return (x-np.pi) % (2*np.pi) - np.pi
+  return (x-np.pi) % (2*np.pi) - np.pi
 
 def build_pixel_beam( global_map, robot_pose, max_len = 50.0 ):
   x0, y0, angle = robot_pose
