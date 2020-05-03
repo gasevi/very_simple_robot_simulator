@@ -104,20 +104,23 @@ class DeleteWallMode( CanvasMode ):
 class WorldStateGUI( Frame ):
 
   def __init__( self, width = 500, height = 290, resolution = 0.01 ):
-    self.width = width
-    self.height = height
+    self.wall_thick = 3
+    self.width = width + 2 * self.wall_thick
+    self.height = height + 2 * self.wall_thick
     self.resolution = resolution # [m/pix]
     self.robot_diameter = 0.355 # [m]
     self.robot_radio = self.robot_diameter / 2.0 # [m]
     self.robot_radio_pix = int( self.robot_radio / self.resolution )
-    self.converter = CoordinateConverter( 0.0, height * self.resolution, self.resolution )
+    self.converter = CoordinateConverter( 0.0, self.height * self.resolution, self.resolution )
     self.cv_bridge = CvBridge()
 
+    signal.signal( signal.SIGINT, self.sigint_handler )
+
     self.root = Tk()
-    self.root.geometry( '%dx%d' % (width, height) )
+    self.root.geometry( '%dx%d' % (self.width, self.height) )
     self.root.title( 'World State' )
     self.root.resizable( False, False )
-    Frame.__init__( self, self.root, width = width, height = height )
+    Frame.__init__( self, self.root, width = self.width, height = self.height )
     self.grid( row = 0, column = 0 )
 
     menubar = Menu( self.master )
@@ -127,10 +130,12 @@ class WorldStateGUI( Frame ):
     fileMenu.add_command( label = "Exit", command = self.on_exit )
     menubar.add_cascade( label = "File", menu = fileMenu )
 
-    self.canvas = Canvas( self, width = width, height = height, bg = '#FFFFFF' )
+    npimage = self.add_margin( 255 * np.ones( (height, width), dtype = np.uint8 ) )
+    self.canvas = Canvas( self, width = self.width, height = self.height, bg = '#FFFFFF' )
     self.canvas.pack( side = LEFT, expand = True, fill = BOTH )
-    self.canvas.pilimage = PILImage.fromarray( 255*np.ones( (height, width, 3), dtype = np.uint8 ) )
+    self.canvas.pilimage = PILImage.fromarray( npimage )
     self.canvas.bgimage = ImageTk.PhotoImage( self.canvas.pilimage )
+    self.canvas.create_image( 0, 0, anchor = NW, image = self.canvas.bgimage, tags = 'backgroundimg' )
 
     self.canvas.bind( '<ButtonPress-1>', self.click1 )
     self.canvas.bind( '<ButtonRelease-1>', self.click1_off )
@@ -139,29 +144,27 @@ class WorldStateGUI( Frame ):
     self.canvas.configure( cursor = 'left_ptr' )
     self.canvas.focus_set()
 
-    signal.signal( signal.SIGINT, self.sigint_handler )
+    self.statem = dict()
+    self.statem['idle_mode'] = IdleMode( self.canvas )
+    #self.statem['set_robot_loc_mode'] = SetRobotLocationMode( self.canvas, self.pub_pixel_pose )
+    self.statem['add_wall_mode'] = AddWallMode( self.canvas )
+    self.statem['delete_wall_mode'] = DeleteWallMode( self.canvas )
+    self.cstate = 'idle_mode'
 
     rospy.Subscriber( 'real_pose', Pose, self.update_robot_pose )
     self.pub_map_metadata = rospy.Publisher( 'map_metadata', MapMetaData, queue_size = 1, latch = True )
     self.pub_map = rospy.Publisher( 'map', OccupancyGrid, queue_size = 1, latch = True )
     self.pub_pixel_pose = rospy.Publisher( 'pixel_pose', Pose, queue_size = 10 )
 
-    map_quat = quaternion_from_euler( 0.0, 0.0, 0.0 )
-    map_pose = Pose( Point( 0.0, height * self.resolution, 0.0 ), Quaternion( *map_quat ) )
-    map_metadata = MapMetaData( rospy.Time.now(), resolution, width, height, map_pose )
-    self.pub_map_metadata.publish( map_metadata )
+    self.update_map()
 
-    og_header = Header( 0, rospy.Time.now(), 'map_frame' )
-    og_data = np.zeros( height * width, dtype = np.uint8 )
-    occupancy_grid = OccupancyGrid( og_header, map_metadata, og_data.tolist() )
-    self.pub_map.publish( occupancy_grid )
-
-    self.statem = dict()
-    self.statem['idle_mode'] = IdleMode( self.canvas )
-    self.statem['set_robot_loc_mode'] = SetRobotLocationMode( self.canvas, self.pub_pixel_pose )
-    self.statem['add_wall_mode'] = AddWallMode( self.canvas )
-    self.statem['delete_wall_mode'] = DeleteWallMode( self.canvas )
-    self.cstate = 'idle_mode'
+  def add_margin( self, image ):
+    height, width = image.shape[:2]
+    horizontal_wall = np.zeros( ( self.wall_thick, width ), dtype = np.uint8 )
+    vertical_wall = np.zeros( ( height + 2 * self.wall_thick, self.wall_thick ), dtype = np.uint8 )
+    image = np.concatenate( (horizontal_wall, image, horizontal_wall), axis = 0 )
+    image = np.concatenate( (vertical_wall, image, vertical_wall), axis = 1 )
+    return image
 
   def open_map( self ):
     yamlfile = tkFileDialog.askopenfilename( title = 'Load Map', filetypes = [ ( 'YAML', ( '*.yaml' ) ) ] )
@@ -180,15 +183,18 @@ class WorldStateGUI( Frame ):
     self.robot_radio_pix = int( self.robot_radio / self.resolution )
     self.converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.resolution )
 
-    pilimage = PILImage.open( map_file )
+    npimage = cv2.imread( map_file, cv2.IMREAD_GRAYSCALE )
+    pilimage = PILImage.fromarray( npimage )
     self.width, self.height = pilimage.size
     bgimage = ImageTk.PhotoImage( pilimage )
 
+    self.canvas.delete( 'robot' )
+    self.canvas.delete( 'robot_direction' )
+    self.canvas.delete( 'backgroundimg' )
     self.root.geometry( '%dx%d' % (self.width, self.height) )
     # keep a reference to the image to avoid the image being garbage collected
     self.canvas.pilimage = pilimage
     self.canvas.bgimage = bgimage
-    self.canvas.delete( 'backgroundimg' )
     self.canvas.config( width = self.width, height = self.height )
     self.canvas.create_image( 0, 0, anchor = NW, image = bgimage, tags = 'backgroundimg' )
 
@@ -276,8 +282,6 @@ class WorldStateGUI( Frame ):
 
     og_header = Header( 0, rospy.Time.now(), 'map_frame' )
     og_data = np.array( background_image )
-    if len( og_data.shape ) > 2:
-      og_data = cv2.cvtColor( og_data, cv2.COLOR_BGR2GRAY )
     og_data = ( 100 - ( og_data / 255.0 ) * 100 ).astype( np.uint8 )
     og_data = og_data.reshape( height * width )
     occupancy_grid = OccupancyGrid( og_header, map_metadata, og_data.tolist() )
