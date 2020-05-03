@@ -120,7 +120,7 @@ class KinectSimulator( object ):
     if len( self.mapimg ) == 0:
       return None
     depth_image = self.max_depth * np.ones( ( self.n_v_scans, self.n_h_scans ), dtype = np.float32 )
-    x, y = self.converter.cartesian2pixel( pose.position.x, pose.position.y )
+    x, y = self.converter.metric2pixel( pose.position.x, pose.position.y )
     roll, pitch, yaw = euler_from_quaternion( ( pose.orientation.x,
                                                 pose.orientation.y,
                                                 pose.orientation.z,
