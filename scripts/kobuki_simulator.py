@@ -101,7 +101,10 @@ class KobukiSimulator( object ):
 
       delta_x = (vx * np.cos( yaw + self.initial_yaw ) - vy * np.sin( yaw + self.initial_yaw )) * dt
       delta_y = (vx * np.sin( yaw + self.initial_yaw ) + vy * np.cos( yaw + self.initial_yaw )) * dt
-      delta_yaw = vyaw * dt
+      if self.simulate_ground_friction:
+        delta_yaw = 0.9 * vyaw * dt
+      else:
+        delta_yaw = vyaw * dt
 
       x += delta_x
       y += delta_y
