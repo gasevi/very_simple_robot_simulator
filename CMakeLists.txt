@@ -158,14 +158,8 @@ add_executable( kinect_simulator src/kinect_simulator_node.cpp
 #   ${catkin_LIBRARIES}
 # )
 
-set( opencv2_LIBRARIES opencv_core opencv_highgui opencv_imgcodecs opencv_imgproc )
-
-if( ${OpenCV_VERSION} VERSION_GREATER_EQUAL "3" )
-  set ( opencv2_LIBRARIES ${opencv2_LIBRARIES} opencv_imgcodecs )
-endif( ${OpenCV_VERSION} VERSION_GREATER_EQUAL "3" )
-
 target_link_libraries( kinect_simulator
-   ${catkin_LIBRARIES} ${opencv2_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
 )
 
 #############
