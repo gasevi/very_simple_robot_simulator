@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+find_package( OpenCV REQUIRED )
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -158,6 +159,10 @@ add_executable( kinect_simulator src/kinect_simulator_node.cpp
 # )
 
 set( opencv2_LIBRARIES opencv_core opencv_highgui opencv_imgcodecs opencv_imgproc )
+
+if( ${OpenCV_VERSION} VERSION_GREATER_EQUAL "3" )
+  set ( opencv2_LIBRARIES ${opencv2_LIBRARIES} opencv_imgcodecs )
+endif( ${OpenCV_VERSION} VERSION_GREATER_EQUAL "3" )
 
 target_link_libraries( kinect_simulator
    ${catkin_LIBRARIES} ${opencv2_LIBRARIES}
