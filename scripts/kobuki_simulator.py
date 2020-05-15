@@ -19,6 +19,7 @@ class KobukiSimulator( object ):
     self.initial_yaw = initial_yaw
     self.real_pose_publish_rate = 5.0 # [Hz]
     self.simulate_ground_friction = True
+    self.reset = False
 
     odom_quat = quaternion_from_euler( 0.0, 0.0, self.initial_yaw )
     self.current_pose = Pose( Point( self.initial_x, self.initial_y, 0.0 ), Quaternion( *odom_quat ) )
@@ -32,6 +33,11 @@ class KobukiSimulator( object ):
     self.pub_real_pose = rospy.Publisher( 'real_pose', Pose, queue_size = 1 )
 
   def set_initial_pose( self, initial_pose ):
+    if initial_pose.position.x == float('inf') and \
+       initial_pose.position.y == float('inf'):
+      odom_quat = quaternion_from_euler( 0.0, 0.0, self.initial_yaw )
+      initial_pose = Pose( Point( self.initial_x, self.initial_y, 0.0 ), Quaternion( *odom_quat ) )
+      self.reset = True
     self.current_pose = initial_pose
     self.pub_real_pose.publish( self.current_pose )
 
@@ -93,6 +99,9 @@ class KobukiSimulator( object ):
     count = 1
     rate = rospy.Rate( self.real_pose_publish_rate )
     while not rospy.is_shutdown():
+      if self.reset:
+        x, y, yaw = 0.0, 0.0, 0.0
+        self.reset = False
       vx, vy, vyaw = self.get_current_speed()
       current_time = rospy.Time.now()
       dt = (current_time - last_time).to_sec()

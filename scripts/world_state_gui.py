@@ -198,6 +198,9 @@ class WorldStateGUI( Frame ):
     fileMenu.add_command( label = "Open map ...", command = self.open_map )
     fileMenu.add_command( label = "Exit", command = self.on_exit )
     menubar.add_cascade( label = "File", menu = fileMenu )
+    toolsMenu = Menu( menubar )
+    toolsMenu.add_command( label = "Reset", command = self.reset_state )
+    menubar.add_cascade( label = "Tools", menu = toolsMenu )
 
     npimage = self.add_margin( 255 * np.ones( (height, width), dtype = np.uint8 ) )
     self.canvas = Canvas( self, width = self.width, height = self.height, bg = '#FFFFFF' )
@@ -314,9 +317,12 @@ class WorldStateGUI( Frame ):
     yaw = np.arctan2( -(coords[3] - coords[1]), coords[2] - coords[0] )
     return x, y, yaw
 
-  def send_initial_pose( self, robot_pose ):
-    x, y = self.converter.pixel2metric( robot_pose[0], robot_pose[1] )
-    yaw = robot_pose[2]
+  def send_initial_pose( self, robot_pose, metric = False ):
+    if metric:
+      x, y, yaw = robot_pose
+    else:
+      x, y = self.converter.pixel2metric( robot_pose[0], robot_pose[1] )
+      yaw = robot_pose[2]
     quat = quaternion_from_euler( 0.0, 0.0, yaw )
     pix_pose = Pose( Point( x, y, 0.0 ), Quaternion( *quat ) )
     self.pub_initial_pose.publish( pix_pose )
@@ -375,6 +381,9 @@ class WorldStateGUI( Frame ):
     og_data = og_data.reshape( height * width )
     occupancy_grid = OccupancyGrid( og_header, map_metadata, og_data.tolist() )
     self.pub_map.publish( occupancy_grid )
+
+  def reset_state( self ):
+    self.send_initial_pose( [float('inf'), float('inf'), 0.0], True )
 
   def mainloop( self ):
     self.root.mainloop()
