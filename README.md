@@ -2,7 +2,9 @@
 
 A very simple robot simulator that uses cmd_vel_mux nodelet and implements a Kinect like simulator
 
-<img src="images/very_simple_robot_nav_interface.png" width=800 >
+<p align="center">
+  <img src="images/very_simple_robot_nav_interface.png" width=500 >
+</p>
 
 ## <span style="font-size: 4em;">Install</span>
 
