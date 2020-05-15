@@ -2,6 +2,8 @@
 
 A very simple robot simulator that uses cmd_vel_mux nodelet and implements a Kinect like simulator
 
+<img src="images/very_simple_robot_nav_interface.png" width=800 >
+
 ## <span style="font-size: 4em;">Install</span>
 
 ```sh
@@ -18,6 +20,13 @@ catkin_make
 echo "source <your_catkin_ws>/devel/setup.bash" >> .bashrc 
 source .bashrc
 ```
+
+## <span style="font-size: 4em;">Operation Modes</span>
+
+ * Idle mode: non interactive interface
+ * Add Wall mode: press 'w' key to draw a wall on the map with the mouse pointer.
+ * Delete Wall mode: press 'd' key to delete a wall.
+ * Set Robot Pose mode: press 'p' key to change the robot pose. Drag and drop the robot to change the position. Click outside the robot to change its orientation.
 
 ## <span style="font-size: 4em;">Architecture</span>
 
