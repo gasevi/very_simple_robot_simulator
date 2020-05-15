@@ -113,30 +113,33 @@ KinectSimulator::build_pixel_beam( int robot_pose_x,
     steps = abs( dy );
   }
 
-  float x_inc = static_cast<float>( dx ) / steps;
-  float y_inc = static_cast<float>( dy ) / steps;
-  float beam_len = hypotf( dx, dy );
-  float f = 1.0;
-  if( beam_len > m_view_depth_pix )
+  if( steps > 0)
   {
-    f = m_view_depth_pix / beam_len;
-  }
-
-  float x = x0;
-  float y = y0;
-  int trimmed_steps = round( f * steps );
-  for( int i = 0 ; i < trimmed_steps ; ++i )
-  {
-    if( 0 == m_global_map.at<uchar>( static_cast<int>( -y ), static_cast<int>( x ) ) )
+    float x_inc = static_cast<float>( dx ) / steps;
+    float y_inc = static_cast<float>( dy ) / steps;
+    float beam_len = hypotf( dx, dy );
+    float f = 1.0;
+    if( beam_len > m_view_depth_pix )
     {
-      break;
+      f = m_view_depth_pix / beam_len;
     }
-    pixel_beam.push_back( pair<int, int>( static_cast<int>( -y ), static_cast<int>( x ) ) );
-    x += x_inc;
-    y += y_inc;
-    if( x < 0 || map_width <= x || (-y) < 0 || map_height <= (-y) )
+
+    float x = x0;
+    float y = y0;
+    int trimmed_steps = round( f * steps );
+    for( int i = 0 ; i < trimmed_steps ; ++i )
     {
-      break;
+      if( 0 == m_global_map.at<uchar>( static_cast<int>( -y ), static_cast<int>( x ) ) )
+      {
+        break;
+      }
+      pixel_beam.push_back( pair<int, int>( static_cast<int>( -y ), static_cast<int>( x ) ) );
+      x += x_inc;
+      y += y_inc;
+      if( x < 0 || map_width <= x || (-y) < 0 || map_height <= (-y) )
+      {
+        break;
+      }
     }
   }
 }
@@ -159,9 +162,13 @@ KinectSimulator::build_pixel_lidar( int robot_pose_x,
     float angle = *ind;
     vector< pair<int, int> > pixel_beam;
     build_pixel_beam( robot_pose_x, -robot_pose_y, angle, pixel_beam );
-    int dy = pixel_beam.back().first - pixel_beam.front().first;
-    int dx = pixel_beam.back().second - pixel_beam.front().second;
-    float d = hypotf( dy, dx );
+    float d = 0;
+    if( pixel_beam.size() > 0 )
+    {
+      int dy = pixel_beam.back().first - pixel_beam.front().first;
+      int dx = pixel_beam.back().second - pixel_beam.front().second;
+      d = hypotf( dy, dx );
+    }
     distance_sensor.push_back( m_map_resolution * d );
     pixel_lidar.insert( pixel_lidar.end(), pixel_beam.begin(), pixel_beam.end() );
   }
@@ -192,6 +199,17 @@ KinectSimulator::new_pose( const geometry_msgs::Pose::ConstPtr& pose_msg )
   Mat depth_image( m_num_vertical_scan, m_num_horizontal_scan, CV_32FC1, Scalar( kMaxDepth ) );
 
   pair<int, int> pix_pose = m_converter.metric2pixel( pose_msg->position.x, pose_msg->position.y );
+  if( pix_pose.second < 0 || m_global_map.rows <= pix_pose.second ||
+      pix_pose.first < 0 || m_global_map.cols <= pix_pose.first )
+  {
+    Size new_size( kDepthImgWidth, kDepthImgHeight );
+    Mat depth_image_resized;
+    resize( depth_image, depth_image_resized, new_size );
+
+    sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage( std_msgs::Header(), "32FC1", depth_image_resized ).toImageMsg();
+    m_depth_image_pub.publish( image_msg );
+    return;
+  }
 
   tf::Quaternion q( pose_msg->orientation.x,
                     pose_msg->orientation.y,
