@@ -129,6 +129,9 @@ class KobukiSimulator( object ):
       rate.sleep()
 
   def move( self, twist ):
+    if np.isnan( twist.linear.x ) or np.isnan( twist.angular.z ):
+      rospy.logwarn( 'Invalid speed command received: lin.x: %s, ang.z: %s' % (str(twist.linear.x), str(twist.angular.z)) )
+      return
     # movement is restricted to x and yaw
     twist.linear.y = 0.0
     twist.linear.z = 0.0
