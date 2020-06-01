@@ -323,16 +323,14 @@ class WorldStateGUI( Frame ):
     draw = PILImageDraw.Draw( map_image )
     itemList = self.canvas.find_all()
     for item in itemList:
-      objtype = self.canvas.type( item )
-      if objtype == 'line':
+      tag = self.canvas.gettags( item )[0]
+      if tag.startswith( 'wall_' ):
         coords = self.canvas.coords( item )
-        coords = [ int( c ) for c in coords]
-        params = ['fill', 'width', 'tags']
+        params = ['fill', 'width']
         opt = dict()
         for p in params:
           opt[p] = self.canvas.itemcget( item, p )
-        if opt['tags'].startswith( 'wall_' ):
-          draw.line( coords, fill = 'black', width = int( float( opt['width'] ) ) )
+        draw.line( coords, fill = opt['fill'], width = int( float( opt['width'] ) ) )
     map_image.save( filebasename + '.png' )
     data = {
              'image' : os.path.basename( filebasename ) + '.png',
