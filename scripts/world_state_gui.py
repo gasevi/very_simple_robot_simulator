@@ -250,6 +250,8 @@ class WorldStateGUI( Frame ):
       map_path = os.path.dirname( yamlfile )
       map_filename = os.path.basename( metadata['image'] )
       map_file = os.path.join( map_path, map_filename )
+    else:
+      map_file = metadata['image']
 
     self.resolution = metadata['resolution'] # [m/pix]
     self.robot_radio_pix = int( self.robot_radio / self.resolution )
