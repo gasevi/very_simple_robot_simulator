@@ -2,6 +2,7 @@
 
 import os.path
 import signal
+import copy
 import rospy
 from geometry_msgs.msg import Pose, Quaternion, Point
 from std_msgs.msg import Header
@@ -232,6 +233,7 @@ class WorldStateGUI( Frame ):
     self.master.config( menu = menubar )
     fileMenu = Menu( menubar )
     fileMenu.add_command( label = "Open map ...", command = self.open_map )
+    fileMenu.add_command( label = "Save map ...", command = self.save_map )
     fileMenu.add_command( label = "Exit", command = self.on_exit )
     menubar.add_cascade( label = "File", menu = fileMenu )
     toolsMenu = Menu( menubar )
@@ -309,6 +311,39 @@ class WorldStateGUI( Frame ):
     self.canvas.create_image( 0, 0, anchor = NW, image = bgimage, tags = 'backgroundimg' )
 
     self.update_map()
+
+  def save_map( self ):
+    outfile = tkFileDialog.asksaveasfile( title = 'Save map', filetypes = [('YAML', ('*.yaml'))], defaultextension = '.yaml' )
+    if len( outfile.name ) == 0:
+      return
+    filebasename = os.path.splitext( outfile.name )[0]
+    map_image = copy.copy( self.canvas.pilimage )
+    width_org, height_org = map_image.size
+    map_image = map_image.convert( 'RGB' )
+    draw = PILImageDraw.Draw( map_image )
+    itemList = self.canvas.find_all()
+    for item in itemList:
+      objtype = self.canvas.type( item )
+      if objtype == 'line':
+        coords = self.canvas.coords( item )
+        coords = [ int( c ) for c in coords]
+        params = ['fill', 'width', 'tags']
+        opt = dict()
+        for p in params:
+          opt[p] = self.canvas.itemcget( item, p )
+        if opt['tags'].startswith( 'wall_' ):
+          draw.line( coords, fill = 'black', width = int( float( opt['width'] ) ) )
+    map_image.save( filebasename + '.png' )
+    data = {
+             'image' : os.path.basename( filebasename ) + '.png',
+             'resolution' : self.converter.resolution,
+             'origin' : [self.converter.metric_zero_x, self.converter.metric_zero_y, 0.0],
+             'occupied_thresh' : 0.65,
+             'free_thresh' : 0.196,
+             'negate' : 0
+           }
+    with open( filebasename + '.yaml', 'w') as fp:
+      yaml.dump( data, fp )
 
   def click1( self, event ):
     self.statem[self.cstate].click1( event )
