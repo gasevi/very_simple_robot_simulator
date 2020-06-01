@@ -18,6 +18,9 @@ import yaml
 from utils import CoordinateConverter
 
 
+GRAPH_FONT=None
+#GRAPH_FONT=('Helvetica', 20)
+
 class CanvasMode( object ):
 
   def __init__( self, canvas ):
@@ -42,8 +45,9 @@ class IdleMode( CanvasMode ):
 
 class SetRobotPoseMode( CanvasMode ):
 
-  def __init__( self, canvas, set_initial_pose_cb ):
+  def __init__( self, canvas, converter, set_initial_pose_cb ):
     self.canvas = canvas
+    self.converter = converter
     self.set_initial_pose_cb = set_initial_pose_cb
     self.x = 0
     self.y = 0
@@ -55,20 +59,26 @@ class SetRobotPoseMode( CanvasMode ):
     self.x, self.y, self.yaw = self.get_current_pose()
     current_tag = self.canvas.itemcget( CURRENT, 'tags' ).split( ' ' )[0]
     if current_tag.startswith( 'robot' ):
-      coords = self.canvas.coords( 'robot' )
-      radius = ( coords[0] - coords[2] )/2
-      coords = [canvasx-radius, canvasy-radius, canvasx+radius, canvasy+radius]
-      self.canvas.coords( 'robot', *coords )
-      coords = self.canvas.coords( 'robot_direction' )
-      deltax = canvasx - coords[0]
-      deltay = canvasy - coords[1]
-      coords[0] += deltax
-      coords[1] += deltay
-      coords[2] += deltax
-      coords[3] += deltay
-      self.canvas.coords( 'robot_direction', *coords )
+      r_coords = self.canvas.coords( 'robot' )
+      radius = ( r_coords[0] - r_coords[2] )/2
+      r_coords = [canvasx-radius, canvasy-radius, canvasx+radius, canvasy+radius]
+      self.canvas.coords( 'robot', *r_coords )
+      d_coords = self.canvas.coords( 'robot_direction' )
+      deltax = canvasx - d_coords[0]
+      deltay = canvasy - d_coords[1]
+      d_coords[0] += deltax
+      d_coords[1] += deltay
+      d_coords[2] += deltax
+      d_coords[3] += deltay
+      self.canvas.coords( 'robot_direction', *d_coords )
       self.x = canvasx
       self.y = canvasy
+      width, height = self.canvas.pilimage.size
+      x_m, y_m = self.converter.pixel2metric( canvasx, canvasy )
+      coord_str = '(%.3f, %.3f) [m]' % (x_m, y_m)
+      i = self.canvas.create_text( width/2, 20, text = coord_str, fill = 'blue', tags = 'indicator_text', font = GRAPH_FONT )
+      r = self.canvas.create_rectangle( self.canvas.bbox(i), fill = 'white', outline = 'white', tags = 'indicator_bg' )
+      self.canvas.tag_lower( r, i )
     else:
       coords = self.canvas.coords( 'robot' )
       radius = ( coords[2] - coords[0] )/2
@@ -80,6 +90,11 @@ class SetRobotPoseMode( CanvasMode ):
       coords = [x, y, x1, y1]
       self.canvas.coords( 'robot_direction', *coords )
       self.yaw = yaw
+      width, height = self.canvas.pilimage.size
+      angle_str = '%.2f [rad]' % yaw
+      i = self.canvas.create_text( width/2, 20, text = angle_str, fill = 'blue', tags = 'indicator_text', font = GRAPH_FONT )
+      r = self.canvas.create_rectangle( self.canvas.bbox(i), fill = 'white', outline = 'white', tags = 'indicator_bg' )
+      self.canvas.tag_lower( r, i )
 
   def click1_motion( self, event ):
     canvasx = self.canvas.canvasx( event.x )
@@ -88,20 +103,24 @@ class SetRobotPoseMode( CanvasMode ):
     if current_tag.startswith( 'robot' ):
       deltax = canvasx - self.x
       deltay = canvasy - self.y
-      coords = self.canvas.coords( 'robot' )
-      coords[0] += deltax
-      coords[1] += deltay
-      coords[2] += deltax
-      coords[3] += deltay
-      self.canvas.coords( 'robot', *coords )
-      coords = self.canvas.coords( 'robot_direction' )
-      coords[0] += deltax
-      coords[1] += deltay
-      coords[2] += deltax
-      coords[3] += deltay
-      self.canvas.coords( 'robot_direction', *coords )
+      r_coords = self.canvas.coords( 'robot' )
+      r_coords[0] += deltax
+      r_coords[1] += deltay
+      r_coords[2] += deltax
+      r_coords[3] += deltay
+      self.canvas.coords( 'robot', *r_coords )
+      d_coords = self.canvas.coords( 'robot_direction' )
+      d_coords[0] += deltax
+      d_coords[1] += deltay
+      d_coords[2] += deltax
+      d_coords[3] += deltay
+      self.canvas.coords( 'robot_direction', *d_coords )
       self.x = canvasx
       self.y = canvasy
+      x_m, y_m = self.converter.pixel2metric( canvasx, canvasy )
+      coord_str = '(%.3f, %.3f) [m]' % (x_m, y_m)
+      self.canvas.itemconfig( 'indicator_text', text = coord_str )
+      self.canvas.coords( 'indicator_bg', self.canvas.bbox( 'indicator_text' ) )
     else:
       coords = self.canvas.coords( 'robot' )
       radius = ( coords[2] - coords[0] )/2
@@ -113,9 +132,14 @@ class SetRobotPoseMode( CanvasMode ):
       coords = [x, y, x1, y1]
       self.canvas.coords( 'robot_direction', *coords )
       self.yaw = yaw
+      angle_str = '%.2f [rad]' % yaw
+      self.canvas.itemconfig( 'indicator_text', text = angle_str )
+      self.canvas.coords( 'indicator_bg', self.canvas.bbox( 'indicator_text' ) )
 
   def click1_off( self, event ):
     self.set_initial_pose_cb( [self.x, self.y, self.yaw] )
+    self.canvas.delete( 'indicator_text' )
+    self.canvas.delete( 'indicator_bg' )
 
   def get_current_pose( self ):
     coords = self.canvas.coords( 'robot' )
@@ -129,11 +153,12 @@ class SetRobotPoseMode( CanvasMode ):
 
 class AddWallMode( CanvasMode ):
 
-  def __init__( self, canvas, id_offset = 0 ):
+  def __init__( self, canvas, converter, id_offset = 0 ):
     self.canvas = canvas
+    self.converter = converter
+    self.id_offset = id_offset
     self.x = 0
     self.y = 0
-    self.id_offset = id_offset
     self.current_tag = ''
 
   def click1( self, event ):
@@ -141,6 +166,10 @@ class AddWallMode( CanvasMode ):
     self.y = self.canvas.canvasy( event.y )
     self.current_tag = 'wall_' + str( self.id_offset )
     self.canvas.create_line( self.x, self.y, self.x, self.y, width = 3, fill = 'black', tags = self.current_tag )
+    width, height = self.canvas.pilimage.size
+    i = self.canvas.create_text( width/2, 20, text = '0.0 [m]', fill = 'blue', tags = 'indicator_text', font = GRAPH_FONT )
+    r = self.canvas.create_rectangle( self.canvas.bbox(i), fill = 'white', outline = 'white', tags = 'indicator_bg' )
+    self.canvas.tag_lower( r, i )
 
   def click1_motion( self, event ):
     canvasx = self.canvas.canvasx( event.x )
@@ -153,9 +182,16 @@ class AddWallMode( CanvasMode ):
     self.canvas.coords( self.current_tag, *coords )
     self.x = canvasx
     self.y = canvasy
+    width = abs(coords[2]-coords[0]) * self.converter.resolution
+    height = abs(coords[3]-coords[1]) * self.converter.resolution
+    wall_legth_str = '%.3f [m]' % np.hypot( width, height )
+    self.canvas.itemconfig( 'indicator_text', text = wall_legth_str )
+    self.canvas.coords( 'indicator_bg', self.canvas.bbox( 'indicator_text' ) )
 
   def click1_off( self, event ):
     self.id_offset += 1
+    self.canvas.delete( 'indicator_text' )
+    self.canvas.delete( 'indicator_bg' )
 
   def reset( self ):
     self.id_offset = 0
@@ -218,8 +254,8 @@ class WorldStateGUI( Frame ):
 
     self.statem = dict()
     self.statem['idle_mode'] = IdleMode( self.canvas )
-    self.statem['set_robot_pose_mode'] = SetRobotPoseMode( self.canvas, self.send_initial_pose )
-    self.statem['add_wall_mode'] = AddWallMode( self.canvas )
+    self.statem['set_robot_pose_mode'] = SetRobotPoseMode( self.canvas, self.converter, self.send_initial_pose )
+    self.statem['add_wall_mode'] = AddWallMode( self.canvas, self.converter )
     self.statem['delete_wall_mode'] = DeleteWallMode( self.canvas )
     self.cstate = 'idle_mode'
 
