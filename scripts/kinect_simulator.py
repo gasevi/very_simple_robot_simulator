@@ -115,7 +115,7 @@ class KinectSimulator( object ):
     self.converter = None
     self.mapimg = np.array( [] )
     self.cv_bridge = CvBridge()
-    rospy.Subscriber( '/real_pose', Pose, self.new_pose )
+    rospy.Subscriber( '/real_pose', Pose, self.new_pose, queue_size = 1 )
     rospy.Subscriber( 'map', OccupancyGrid, self.set_map )
     self.pub_depth = rospy.Publisher( 'camera/depth/image_raw', Image, queue_size = 1 )
 
@@ -181,6 +181,7 @@ class KinectSimulator( object ):
     self.map_resolution = occupancy_grid.info.resolution
     self.mapimg = 100 - np.array( occupancy_grid.data ).reshape( (height, width) )
     self.converter = CoordinateConverter( 0.0, self.mapimg.shape[0] * self.map_resolution, self.map_resolution )
+    self.view_depth_pix = 4.0 / self.map_resolution # [pix]
 
 
 if __name__ == '__main__':
