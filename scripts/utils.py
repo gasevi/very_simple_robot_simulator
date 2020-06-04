@@ -1,3 +1,8 @@
+import numpy as np
+
+
+def sawtooth( x ):
+  return (x-np.pi) % (2*np.pi) - np.pi
 
 class CoordinateConverter( object ):
 
