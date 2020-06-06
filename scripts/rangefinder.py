@@ -18,6 +18,13 @@ def build_pixel_beam( global_map, robot_pose, max_len = 50.0 ):
     else:
       dy = (-h)-y0
       dx = 0
+  elif abs( np.tan( angle ) ) < 10**(-4):
+    if abs( angle ) < 10**(-4):
+      dy = 0
+      dx = w-x0
+    else:
+      dy = 0
+      dx = 0 - x0
   else:
     a = np.tan( angle )
     b = y0-a*x0

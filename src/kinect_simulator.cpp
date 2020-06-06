@@ -1,6 +1,7 @@
 #include "kinect_simulator.h"
 #include "vsrs_utils.h"
 
+#include <ros/console.h>
 #include <tf/transform_datatypes.h>
 #include <cv_bridge/cv_bridge.h>
 
@@ -55,6 +56,19 @@ KinectSimulator::build_pixel_beam( int robot_pose_x,
     {
       dy = -map_height - y0;
       dx = 0;
+    }
+  }
+  else if( abs( tan( angle ) ) < pow( 10, -4 ) )
+  {
+    if( abs( angle ) < pow( 10, -4 ) )
+    {
+      dy = 0;
+      dx = map_width - x0;
+    }
+    else
+    {
+      dy = 0;
+      dx = 0 - x0;
     }
   }
   else
