@@ -18,7 +18,7 @@ class LidarSimulator( object ):
     self.n_h_scans = 57
     self.map_resolution = 0.01 # [m/pix]
     self.view_depth = 4.0 # [m]
-    self.z_max = 20.0 # [m]
+    self.z_max = self.view_depth # [m]
 
     self.view_depth_pix = self.view_depth / self.map_resolution # [pix]
     self.seq = 0
