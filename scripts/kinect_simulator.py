@@ -21,15 +21,15 @@ class KinectSimulator( object ):
     self.max_depth = 10.0 # [m]
     self.hfov = 57*np.pi/180.0 # [rad] (57 [degrees])
     self.vfov = 43*np.pi/180.0 # [rad] (43 [degrees])
+    self.view_depth = 4.0 # [m]
+    self.min_valid_distance = 0.45 # [m]
     self.depth_img_width = 640 # [pix]
     self.depth_img_height = 480 # [pix]
-    self.min_valid_distance = 0.45 # [m]
     self.map_resolution = 0.01 # [m/pix]
 
-    self.show_depth_map = False
     self.n_h_scans = 50
     self.n_v_scans = int( (self.depth_img_height * self.n_h_scans) / self.depth_img_width )
-    self.view_depth_pix = 4.0 / self.map_resolution # [pix]
+    self.view_depth_pix = self.view_depth / self.map_resolution # [pix]
     self.h_beam_angles = np.linspace( self.hfov/2.0, -self.hfov/2.0, self.n_h_scans )
     self.v_beam_angles = np.linspace( self.vfov/2.0, -self.vfov/2.0, self.n_v_scans )
 
@@ -90,14 +90,6 @@ class KinectSimulator( object ):
         depth_image[ceiling_limit_index+1:ground_limit_index,c] = d if d >= self.min_valid_distance else float( 'nan' )
     depth_image = cv2.resize( depth_image, ( self.depth_img_width, self.depth_img_height ) )
 
-    if self.show_depth_map:
-      image2display = depth_image - depth_image.min()
-      image2display = ( image2display * ( 255.0/image2display.max() ) ).astype( np.uint8 )
-      image2display = 255 - image2display
-      image2display = cv2.applyColorMap( image2display, cv2.COLORMAP_HOT )
-      cv2.imshow( 'Depth Sensor', image2display )
-      cv2.waitKey( 1 )
-
     msg = self.cv_bridge.cv2_to_imgmsg( depth_image ) #, encoding = '32FC1' )
     self.pub_depth.publish( msg )
 
@@ -107,7 +99,7 @@ class KinectSimulator( object ):
     self.map_resolution = occupancy_grid.info.resolution
     self.mapimg = 100 - np.array( occupancy_grid.data ).reshape( (height, width) )
     self.converter = CoordinateConverter( 0.0, self.mapimg.shape[0] * self.map_resolution, self.map_resolution )
-    self.view_depth_pix = 4.0 / self.map_resolution # [pix]
+    self.view_depth_pix = self.view_depth / self.map_resolution # [pix]
 
 
 if __name__ == '__main__':
