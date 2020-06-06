@@ -64,6 +64,7 @@ class KinectSimulator( object ):
                                                             self.n_h_scans,
                                                             self.view_depth_pix )
     distance_sensor = self.map_resolution * np.array( distance_sensor ) # [m]
+    distance_sensor = distance_sensor[::-1] # reverse: from left to right
     for c, d in enumerate( distance_sensor ):
       d = d*np.cos( self.h_beam_angles[c] ) # project beam into the robot plane
 

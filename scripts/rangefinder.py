@@ -71,7 +71,7 @@ def build_pixel_rangefinder( global_map, pose, fov, n_scans = 100, view_depth = 
   right_beam = yaw - fov/2.0
   pixel_lidar = list()
   distance_sensor = list()
-  for angle in np.linspace( left_beam, right_beam, n_scans ).tolist():
+  for angle in np.linspace( right_beam, left_beam, n_scans ).tolist():
     robot_pose = (x, y, angle)
     pixel_beam = build_pixel_beam( global_map, robot_pose, view_depth )
     pixel_lidar.append( pixel_beam )

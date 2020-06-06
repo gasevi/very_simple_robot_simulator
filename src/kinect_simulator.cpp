@@ -154,7 +154,7 @@ KinectSimulator::build_pixel_lidar( int robot_pose_x,
   float left_beam = yaw + kHfov/2.0;
   float right_beam = yaw - kHfov/2.0;
   vector< pair<int, int> > pixel_lidar;
-  std::vector<double> lidar_angles = linspace( left_beam, right_beam, m_num_horizontal_scan );
+  std::vector<double> lidar_angles = linspace( right_beam, left_beam, m_num_horizontal_scan );
   std::vector<double>::iterator ind;
   std::vector<double>::iterator end = lidar_angles.end();
   for( ind = lidar_angles.begin() ; ind != end ; ++ind )
@@ -229,7 +229,7 @@ KinectSimulator::new_pose( const geometry_msgs::Pose::ConstPtr& pose_msg )
 
   for( int c = 0 ; c < m_num_horizontal_scan ; ++c )
   {
-    float d = distance_sensor[c];
+    float d = distance_sensor[m_num_horizontal_scan-c-1];
     d = d * cos( m_horizontal_beam_angles[c] ); // project beam into the robot plane
 
     float ceiling_angle = atan2( kWallHeight - kKinectHeight, d );
