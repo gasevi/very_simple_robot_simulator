@@ -316,6 +316,7 @@ KinectSimulator::set_map( const nav_msgs::OccupancyGrid::ConstPtr& msg )
     }
   }
   m_converter.reset( 0.0, info.height * info.resolution, info.resolution );
+  m_view_depth_pix = static_cast<int>( kViewDepth / m_map_resolution );
 }
 
 
