@@ -19,6 +19,7 @@ class LidarSimulator( object ):
     self.map_resolution = 0.01 # [m/pix]
     self.view_depth = 4.0 # [m]
     self.z_max = self.view_depth # [m]
+    self.std_error = 0.02 # [m]
 
     self.view_depth_pix = self.view_depth / self.map_resolution # [pix]
     self.seq = 0
@@ -55,7 +56,8 @@ class LidarSimulator( object ):
                                                             self.n_h_scans,
                                                             self.view_depth_pix )
     distance_sensor = self.map_resolution * np.array( distance_sensor ) # [m]
-    distance_sensor[distance_sensor > self.z_max-0.05] = self.z_max # filter pix to meter conversion errors
+    distance_sensor = np.random.normal( distance_sensor, self.std_error )
+    distance_sensor[distance_sensor > self.z_max-0.2] = self.z_max # filter pix to meter conversion errors
 
     scans = np.zeros( self.lidar_n_h_scans )
     out_of_fov_beams = int( self.lidar_n_h_scans/2 ) - int( self.n_h_scans/2 )
