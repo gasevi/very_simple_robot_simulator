@@ -305,8 +305,8 @@ class WorldStateGUI( Frame ):
     pilimage = PILImage.fromarray( npimage )
     if self.map_resolution != self.gui_resolution:
       factor = self.map_resolution / self.gui_resolution
-      width = int( factor * pilimage.size[0] )
-      height = int( factor * pilimage.size[1] )
+      width = int( np.ceil( factor * pilimage.size[0] ) )
+      height = int( np.ceil( factor * pilimage.size[1] ) )
       pilimage = pilimage.resize( (width, height), resample = PILImage.NEAREST )
     self.width, self.height = pilimage.size
     bgimage = ImageTk.PhotoImage( pilimage )
@@ -343,8 +343,8 @@ class WorldStateGUI( Frame ):
         draw.line( coords, fill = opt['fill'], width = int( float( opt['width'] ) ) )
     if self.map_resolution != self.gui_resolution:
       factor = self.gui_resolution / self.map_resolution
-      width = int( factor * map_image.size[0] )
-      height = int( factor * map_image.size[1] )
+      width = int( np.ceil( factor * map_image.size[0] ) )
+      height = int( np.ceil( factor * map_image.size[1] ) )
       map_image = map_image.resize( (width, height), resample = PILImage.NEAREST )
     map_image.save( filebasename + '.pgm' )
     data = {
@@ -454,8 +454,14 @@ class WorldStateGUI( Frame ):
           opt[p] = self.canvas.itemcget( item, p )
         draw.line( coords, fill = opt['fill'], width = int( float( opt['width'] ) ) )
 
-    width, height = background_image.size
 
+    if self.map_resolution != self.gui_resolution:
+      factor = self.gui_resolution / self.map_resolution
+      width = int( np.ceil( factor * background_image.size[0] ) )
+      height = int( np.ceil( factor * background_image.size[1] ) )
+      background_image = background_image.resize( (width, height), resample = PILImage.NEAREST )
+
+    width, height = background_image.size
     map_quat = quaternion_from_euler( 0.0, 0.0, 0.0 )
     map_pose = Pose( Point( 0.0, height * self.map_resolution, 0.0 ), Quaternion( *map_quat ) )
     map_metadata = MapMetaData( rospy.Time.now(), self.map_resolution, width, height, map_pose )
