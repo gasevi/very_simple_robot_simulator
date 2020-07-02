@@ -215,11 +215,13 @@ class WorldStateGUI( Frame ):
     self.wall_thick = 3
     self.width = width + 2 * self.wall_thick
     self.height = height + 2 * self.wall_thick
-    self.resolution = resolution # [m/pix]
+    self.gui_resolution = resolution # [m/pix]
+    self.map_resolution = resolution # [m/pix]
     self.robot_diameter = 0.355 # [m]
     self.robot_radio = self.robot_diameter / 2.0 # [m]
-    self.robot_radio_pix = int( self.robot_radio / self.resolution )
-    self.converter = CoordinateConverter( 0.0, self.height * self.resolution, self.resolution )
+    self.robot_radio_pix = int( self.robot_radio / self.gui_resolution )
+    self.gui_converter = CoordinateConverter( 0.0, self.height * self.gui_resolution, self.gui_resolution )
+    self.map_converter = CoordinateConverter( 0.0, self.height * self.map_resolution, self.map_resolution )
     self.cv_bridge = CvBridge()
 
     self.root = Tk()
@@ -256,8 +258,8 @@ class WorldStateGUI( Frame ):
 
     self.statem = dict()
     self.statem['idle_mode'] = IdleMode( self.canvas )
-    self.statem['set_robot_pose_mode'] = SetRobotPoseMode( self.canvas, self.converter, self.send_initial_pose )
-    self.statem['add_wall_mode'] = AddWallMode( self.canvas, self.converter )
+    self.statem['set_robot_pose_mode'] = SetRobotPoseMode( self.canvas, self.gui_converter, self.send_initial_pose )
+    self.statem['add_wall_mode'] = AddWallMode( self.canvas, self.gui_converter )
     self.statem['delete_wall_mode'] = DeleteWallMode( self.canvas )
     self.cstate = 'idle_mode'
 
@@ -291,12 +293,21 @@ class WorldStateGUI( Frame ):
     else:
       map_file = metadata['image']
 
-    self.resolution = metadata['resolution'] # [m/pix]
-    self.robot_radio_pix = int( self.robot_radio / self.resolution )
-    self.converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.resolution )
+    self.map_resolution = metadata['resolution'] # [m/pix]
+    self.map_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.map_resolution )
+    self.gui_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.gui_resolution )
+
+    for st_name, st_object in self.statem.items():
+      if hasattr( st_object, 'converter' ):
+        st_object.converter = self.gui_converter
 
     npimage = cv2.imread( map_file, cv2.IMREAD_GRAYSCALE )
     pilimage = PILImage.fromarray( npimage )
+    if self.map_resolution != self.gui_resolution:
+      factor = self.map_resolution / self.gui_resolution
+      width = int( factor * pilimage.size[0] )
+      height = int( factor * pilimage.size[1] )
+      pilimage = pilimage.resize( (width, height), resample = PILImage.NEAREST )
     self.width, self.height = pilimage.size
     bgimage = ImageTk.PhotoImage( pilimage )
 
@@ -314,11 +325,10 @@ class WorldStateGUI( Frame ):
 
   def save_map( self ):
     outfile = tkFileDialog.asksaveasfile( title = 'Save map', filetypes = [('YAML', ('*.yaml'))], defaultextension = '.yaml' )
-    if len( outfile.name ) == 0:
+    if outfile is None or len( outfile.name ) == 0:
       return
     filebasename = os.path.splitext( outfile.name )[0]
     map_image = copy.copy( self.canvas.pilimage )
-    width_org, height_org = map_image.size
     map_image = map_image.convert( 'RGB' )
     draw = PILImageDraw.Draw( map_image )
     itemList = self.canvas.find_all()
@@ -331,11 +341,16 @@ class WorldStateGUI( Frame ):
         for p in params:
           opt[p] = self.canvas.itemcget( item, p )
         draw.line( coords, fill = opt['fill'], width = int( float( opt['width'] ) ) )
-    map_image.save( filebasename + '.png' )
+    if self.map_resolution != self.gui_resolution:
+      factor = self.gui_resolution / self.map_resolution
+      width = int( factor * map_image.size[0] )
+      height = int( factor * map_image.size[1] )
+      map_image = map_image.resize( (width, height), resample = PILImage.NEAREST )
+    map_image.save( filebasename + '.pgm' )
     data = {
              'image' : os.path.basename( filebasename ) + '.png',
-             'resolution' : self.converter.resolution,
-             'origin' : [self.converter.metric_zero_x, self.converter.metric_zero_y, 0.0],
+             'resolution' : self.map_converter.resolution,
+             'origin' : [self.map_converter.metric_zero_x, self.map_converter.metric_zero_y, 0.0],
              'occupied_thresh' : 0.65,
              'free_thresh' : 0.196,
              'negate' : 0
@@ -392,7 +407,7 @@ class WorldStateGUI( Frame ):
     if metric:
       x, y, yaw = robot_pose
     else:
-      x, y = self.converter.pixel2metric( robot_pose[0], robot_pose[1] )
+      x, y = self.gui_converter.pixel2metric( robot_pose[0], robot_pose[1] )
       yaw = robot_pose[2]
     quat = quaternion_from_euler( 0.0, 0.0, yaw )
     pix_pose = Pose( Point( x, y, 0.0 ), Quaternion( *quat ) )
@@ -400,7 +415,7 @@ class WorldStateGUI( Frame ):
 
   def update_robot_pose( self, pose ):
     if self.cstate != 'set_robot_pose_mode':
-      x, y = self.converter.metric2pixel( pose.position.x, pose.position.y )
+      x, y = self.gui_converter.metric2pixel( pose.position.x, pose.position.y )
       roll, pitch, yaw = euler_from_quaternion( ( pose.orientation.x,
                                                   pose.orientation.y,
                                                   pose.orientation.z,
@@ -442,8 +457,8 @@ class WorldStateGUI( Frame ):
     width, height = background_image.size
 
     map_quat = quaternion_from_euler( 0.0, 0.0, 0.0 )
-    map_pose = Pose( Point( 0.0, height * self.resolution, 0.0 ), Quaternion( *map_quat ) )
-    map_metadata = MapMetaData( rospy.Time.now(), self.resolution, width, height, map_pose )
+    map_pose = Pose( Point( 0.0, height * self.map_resolution, 0.0 ), Quaternion( *map_quat ) )
+    map_metadata = MapMetaData( rospy.Time.now(), self.map_resolution, width, height, map_pose )
     self.pub_map_metadata.publish( map_metadata )
 
     og_header = Header( 0, rospy.Time.now(), 'map_frame' )
