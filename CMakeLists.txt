@@ -143,6 +143,10 @@ add_executable( kinect_simulator src/kinect_simulator_node.cpp
                                  src/kinect_simulator.cpp
                                  src/vsrs_utils.cpp )
 
+add_executable( lidar_simulator src/lidar_simulator_node.cpp
+                                src/lidar_simulator.cpp
+                                src/vsrs_utils.cpp )
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -159,6 +163,10 @@ add_executable( kinect_simulator src/kinect_simulator_node.cpp
 # )
 
 target_link_libraries( kinect_simulator
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+)
+
+target_link_libraries( lidar_simulator
    ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
 )
 

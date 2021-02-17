@@ -1,5 +1,6 @@
 <launch>
 
-  <node pkg="very_simple_robot_simulator" name="lidar_simulator" type="lidar_simulator.py" />
+  <!-- <node pkg="very_simple_robot_simulator" name="lidar_simulator" type="lidar_simulator.py" /> -->
+  <node pkg="very_simple_robot_simulator" name="lidar_simulator" type="lidar_simulator" />
 
 </launch>
