@@ -11,6 +11,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  geometry_msgs
+  nav_msgs
+  tf
   image_transport
   cv_bridge
 )
@@ -139,6 +142,10 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/very_simple_robot_simulator_node.cpp)
 
+add_executable( kobuki_simulator src/kobuki_simulator_node.cpp
+                                 src/kobuki_simulator.cpp
+                                 src/vsrs_utils.cpp )
+
 add_executable( kinect_simulator src/kinect_simulator_node.cpp
                                  src/kinect_simulator.cpp
                                  src/vsrs_utils.cpp )
@@ -161,6 +168,10 @@ add_executable( lidar_simulator src/lidar_simulator_node.cpp
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+
+target_link_libraries( kobuki_simulator
+   ${catkin_LIBRARIES}
+)
 
 target_link_libraries( kinect_simulator
    ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}

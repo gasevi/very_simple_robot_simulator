@@ -8,12 +8,11 @@
 
   <!-- velocity mulitplexer -->
   <include file="$(find yocs_cmd_vel_mux)/launch/cmd_vel_mux.launch">
-    <remap from="/yocs_cmd_vel_mux/active" to="/cmd_vel_mux/active"/>
     <arg name="nodelet_manager_name"  value="$(arg nodelet_manager_name)"/>
     <arg name="config_file"           value="$(arg config_file)"/>
   </include>
 
-  <node pkg="very_simple_robot_simulator" name="kobuki_simulator" type="kobuki_simulator.py" />
+  <node pkg="very_simple_robot_simulator" name="kobuki_simulator" type="kobuki_simulator" />
 
 </launch>
 
