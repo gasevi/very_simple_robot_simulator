@@ -196,7 +196,7 @@ KobukiSimulator::move( const geometry_msgs::Twist& twist )
   }
   // movement is restricted to x and yaw
   m_current_speed.linear.x = twist.linear.x;
-  m_current_speed.angular.z = twist.linear.z;
+  m_current_speed.angular.z = twist.angular.z;
 }
 
 void
