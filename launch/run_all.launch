@@ -1,0 +1,8 @@
+<launch>
+
+  <include file="$(find very_simple_robot_simulator)/launch/minimal_simulator.launch" />
+  <include file="$(find very_simple_robot_simulator)/launch/openni_simulator.launch" />
+  <include file="$(find very_simple_robot_simulator)/launch/lidar_simulator.launch" />
+  <include file="$(find very_simple_robot_simulator)/launch/world_state.launch" />
+
+</launch>
