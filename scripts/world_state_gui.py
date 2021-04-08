@@ -10,8 +10,14 @@ from nav_msgs.msg import MapMetaData, OccupancyGrid
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import numpy as np
 from PIL import Image as PILImage, ImageDraw as PILImageDraw, ImageTk
-from Tkinter import *
-import tkFileDialog
+try:
+  # Python2
+  from Tkinter import *
+  import tkFileDialog
+except ImportError:
+  # Python3
+  from tkinter import *
+  from tkinter import filedialog as tkFileDialog
 import cv2
 from cv_bridge import CvBridge
 import yaml
