@@ -354,7 +354,7 @@ class WorldStateGUI( Frame ):
       map_image = map_image.resize( (width, height), resample = PILImage.NEAREST )
     map_image.save( filebasename + '.pgm' )
     data = {
-             'image' : os.path.basename( filebasename ) + '.png',
+             'image' : os.path.basename( filebasename ) + '.pgm',
              'resolution' : self.map_converter.resolution,
              'origin' : [self.map_converter.metric_zero_x, self.map_converter.metric_zero_y, 0.0],
              'occupied_thresh' : 0.65,
