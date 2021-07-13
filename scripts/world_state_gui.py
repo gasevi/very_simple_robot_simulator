@@ -276,6 +276,15 @@ class WorldStateGUI( Frame ):
 
     self.update_map()
 
+    if rospy.has_param( '/world_state_gui/map_file' ):
+      yaml_file = rospy.get_param( '/world_state_gui/map_file' )
+      rospy.loginfo( 'Loading map file: %s' % (yaml_file) )
+      if os.path.isfile( yaml_file ):
+        self.load_map( yaml_file )
+        self.update_map()
+      else:
+        rospy.logerr( 'Map file [%s] does not exist' % (yaml_file) )
+
   def add_margin( self, image ):
     height, width = image.shape[:2]
     horizontal_wall = np.zeros( ( self.wall_thick, width ), dtype = np.uint8 )
@@ -288,45 +297,7 @@ class WorldStateGUI( Frame ):
     yamlfile = tkFileDialog.askopenfilename( title = 'Load Map', filetypes = [ ( 'YAML', ( '*.yaml' ) ) ] )
     if len( yamlfile ) == 0:
       return
-
-    with open( yamlfile ) as fd:
-      metadata = yaml.load( fd )
-
-    if not os.path.isabs( metadata['image'] ):
-      map_path = os.path.dirname( yamlfile )
-      map_filename = os.path.basename( metadata['image'] )
-      map_file = os.path.join( map_path, map_filename )
-    else:
-      map_file = metadata['image']
-
-    self.map_resolution = metadata['resolution'] # [m/pix]
-    self.map_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.map_resolution )
-    self.gui_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.gui_resolution )
-
-    for st_name, st_object in self.statem.items():
-      if hasattr( st_object, 'converter' ):
-        st_object.converter = self.gui_converter
-
-    npimage = cv2.imread( map_file, cv2.IMREAD_GRAYSCALE )
-    pilimage = PILImage.fromarray( npimage )
-    if self.map_resolution != self.gui_resolution:
-      factor = self.map_resolution / self.gui_resolution
-      width = int( np.ceil( factor * pilimage.size[0] ) )
-      height = int( np.ceil( factor * pilimage.size[1] ) )
-      pilimage = pilimage.resize( (width, height), resample = PILImage.NEAREST )
-    self.width, self.height = pilimage.size
-    bgimage = ImageTk.PhotoImage( pilimage )
-
-    self.canvas.delete( 'robot' )
-    self.canvas.delete( 'robot_direction' )
-    self.canvas.delete( 'backgroundimg' )
-    self.root.geometry( '%dx%d' % (self.width, self.height) )
-    # keep a reference to the image to avoid the image being garbage collected
-    self.canvas.pilimage = pilimage
-    self.canvas.bgimage = bgimage
-    self.canvas.config( width = self.width, height = self.height )
-    self.canvas.create_image( 0, 0, anchor = NW, image = bgimage, tags = 'backgroundimg' )
-
+    self.load_map( yamlfile )
     self.update_map()
 
   def save_map( self ):
@@ -445,6 +416,45 @@ class WorldStateGUI( Frame ):
         coords = [x, y, x1, y1]
         self.canvas.coords( 'robot_direction', *coords )
       #rospy.loginfo( 'x: %d, y: %d, yaw: %f' % ( x, y, yaw ) )
+
+  def load_map( self, yaml_file ):
+    with open( yaml_file ) as fd:
+      metadata = yaml.load( fd )
+
+    if not os.path.isabs( metadata['image'] ):
+      map_path = os.path.dirname( yaml_file )
+      map_filename = os.path.basename( metadata['image'] )
+      map_file = os.path.join( map_path, map_filename )
+    else:
+      map_file = metadata['image']
+
+    self.map_resolution = metadata['resolution'] # [m/pix]
+    self.map_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.map_resolution )
+    self.gui_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.gui_resolution )
+
+    for st_name, st_object in self.statem.items():
+      if hasattr( st_object, 'converter' ):
+        st_object.converter = self.gui_converter
+
+    npimage = cv2.imread( map_file, cv2.IMREAD_GRAYSCALE )
+    pilimage = PILImage.fromarray( npimage )
+    if self.map_resolution != self.gui_resolution:
+      factor = self.map_resolution / self.gui_resolution
+      width = int( np.ceil( factor * pilimage.size[0] ) )
+      height = int( np.ceil( factor * pilimage.size[1] ) )
+      pilimage = pilimage.resize( (width, height), resample = PILImage.NEAREST )
+    self.width, self.height = pilimage.size
+    bgimage = ImageTk.PhotoImage( pilimage )
+
+    self.canvas.delete( 'robot' )
+    self.canvas.delete( 'robot_direction' )
+    self.canvas.delete( 'backgroundimg' )
+    self.root.geometry( '%dx%d' % (self.width, self.height) )
+    # keep a reference to the image to avoid the image being garbage collected
+    self.canvas.pilimage = pilimage
+    self.canvas.bgimage = bgimage
+    self.canvas.config( width = self.width, height = self.height )
+    self.canvas.create_image( 0, 0, anchor = NW, image = bgimage, tags = 'backgroundimg' )
 
   def update_map( self ):
     background_image = self.canvas.pilimage.copy()
