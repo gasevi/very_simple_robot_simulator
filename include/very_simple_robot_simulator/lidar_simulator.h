@@ -21,10 +21,12 @@ public:
 private:
 
   static
-  constexpr float kHfov = 0.995; // [rad] (57 [degrees])
+  constexpr float kDefaultHFov = 57; // [deg]
 
   static
-  constexpr float kViewDepth = 4.0; // [m]
+  constexpr float kDefaultViewDepth = 4.0; // [m]
+
+  float m_effective_hfov;
 
   cv::Mat m_global_map;
 

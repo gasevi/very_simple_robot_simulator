@@ -12,11 +12,10 @@ using namespace cv;
 
 
 LidarSimulator::LidarSimulator( bool publish_2d_map )
-: m_hfov( 57*M_PI/180.0 ),     // [rad] (57 [degrees])
-  m_num_horizontal_scan( 57 ), // [deg]
-  m_map_resolution( 0.01 ),    // [m/pix]
-  m_z_max( kViewDepth ),       // [m]
-  m_std_error( 0.02 ),         // [m]
+: m_effective_hfov( kDefaultHFov ),
+  m_map_resolution( 0.01 ),     // [m/pix]
+  m_z_max( kDefaultViewDepth ), // [m]
+  m_std_error( 0.005 ),         // [m]
   m_seq( 0 ),
   m_converter( 0, 290 * m_map_resolution, m_map_resolution ),
   m_global_map( 290, 500, CV_8UC1, Scalar( 255 ) ),
@@ -25,7 +24,20 @@ LidarSimulator::LidarSimulator( bool publish_2d_map )
   m_image_transport( m_node_handle ),
   m_publish_2d_map( publish_2d_map )
 {
-  m_view_depth_pix = static_cast<int>( kViewDepth / m_map_resolution );
+  if( m_node_handle.hasParam( "/lidar_simulator/effective_hfov" ) )
+  {
+    m_node_handle.getParam( "/lidar_simulator/effective_hfov", m_effective_hfov );
+  }
+
+  if( m_node_handle.hasParam( "/lidar_simulator/view_depth" ) )
+  {
+    m_node_handle.getParam( "/lidar_simulator/view_depth", m_z_max );
+  }
+
+  m_hfov = m_effective_hfov*M_PI/180.0; // [rad]
+  m_num_horizontal_scan = m_effective_hfov;
+
+  m_view_depth_pix = static_cast<int>( m_z_max / m_map_resolution );
   m_horizontal_beam_angles = linspace( m_hfov/2.0, -m_hfov/2.0, m_num_horizontal_scan );
 
   m_map_sub = m_node_handle.subscribe( "map", 1, &LidarSimulator::set_map, this );
@@ -171,8 +183,8 @@ LidarSimulator::build_pixel_lidar( int robot_pose_x,
                                    vector<float>& distance_sensor )
 {
   float yaw = sawtooth( robot_pose_yaw );
-  float left_beam = yaw + kHfov/2.0;
-  float right_beam = yaw - kHfov/2.0;
+  float left_beam = yaw + m_hfov/2.0;
+  float right_beam = yaw - m_hfov/2.0;
   vector< pair<int, int> > pixel_lidar;
   std::vector<double> lidar_angles = linspace( right_beam, left_beam, m_num_horizontal_scan );
   std::vector<double>::iterator ind;
@@ -256,7 +268,14 @@ LidarSimulator::new_pose( const geometry_msgs::Pose::ConstPtr& pose_msg )
 
   vector<float> scans( m_lidar_n_h_scans, m_z_max );
   int out_of_fov_beams = int( m_lidar_n_h_scans/2 ) - int( m_num_horizontal_scan/2 );
-  copy( distance_sensor.begin(), distance_sensor.end(), scans.begin() + out_of_fov_beams );
+  if( out_of_fov_beams > 0 )
+  {
+    copy( distance_sensor.begin(), distance_sensor.end(), scans.begin() + out_of_fov_beams );
+  }
+  else
+  {
+    copy( distance_sensor.begin(), distance_sensor.end(), scans.begin() );
+  }
 
   send_laser_scan( scans );
 }
@@ -295,16 +314,19 @@ LidarSimulator::set_map( const nav_msgs::OccupancyGrid::ConstPtr& msg )
   nav_msgs::MapMetaData info = msg->info;
   ROS_INFO( "New map received (%d, %d, %f)", info.width, info.height, info.resolution );
   m_map_resolution = info.resolution;
+  m_global_map.release();
+  m_global_map.create( info.height, info.width, CV_8UC1 );
   for( unsigned int y = 0 ; y < info.height ; ++y )
   {
     for( unsigned int x = 0 ; x < info.width ; ++x )
     {
       // from occupancy grid to grayscale
-      m_global_map.at<uchar>( y, x ) = ( 100 - static_cast<int>( msg->data[x + info.width * y] ) )*( 255/100.0 );
+      m_global_map.at<uchar>( info.height - 1 - y, x ) = ( 100 - static_cast<int>( msg->data[x + info.width * y] ) )*( 255/100.0 );
     }
   }
-  m_converter.reset( 0.0, info.height * info.resolution, info.resolution );
-  m_view_depth_pix = static_cast<int>( kViewDepth / m_map_resolution );
+  //m_converter.reset( 0.0, info.height * info.resolution, info.resolution );
+  m_converter.reset( info.origin.position.x, info.origin.position.y + info.height * info.resolution, info.resolution );
+  m_view_depth_pix = static_cast<int>( m_z_max / m_map_resolution );
 }
 
 
