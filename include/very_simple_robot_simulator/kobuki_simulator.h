@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
@@ -49,12 +50,17 @@ private:
 
   ros::Subscriber m_initial_pose_sub;
 
+  ros::Subscriber m_initial_pose_with_cov_sub;
+
   ros::Publisher m_odom_pub;
 
   ros::Publisher m_real_pose_pub;
 
   void
   set_initial_pose( const geometry_msgs::Pose::ConstPtr& initial_pose );
+
+  void
+  set_initial_pose_with_cov( const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& initialpose );
 
   void
   update_real_pose( float vx, float vy, float vyaw, float dt );

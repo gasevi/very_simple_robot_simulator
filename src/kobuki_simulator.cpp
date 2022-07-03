@@ -28,6 +28,7 @@ KobukiSimulator::KobukiSimulator( float initial_x,
   //m_cmd_vel_sub = m_node_handle.subscribe( "yocs_cmd_vel_mux/output/cmd_vel", 1, &KobukiSimulator::move, this );
   //m_active_sub = m_node_handle.subscribe( "yocs_cmd_vel_mux/active", 1, &KobukiSimulator::velocity_state, this );
   m_initial_pose_sub = m_node_handle.subscribe( "initial_pose", 1, &KobukiSimulator::set_initial_pose, this );
+  m_initial_pose_with_cov_sub = m_node_handle.subscribe( "initialpose", 1, &KobukiSimulator::set_initial_pose_with_cov, this );
   m_odom_pub = m_node_handle.advertise<nav_msgs::Odometry>( "odom", 10 );
   m_real_pose_pub = m_node_handle.advertise<geometry_msgs::Pose>( "real_pose", 1 );
 }
@@ -49,6 +50,16 @@ KobukiSimulator::set_initial_pose( const geometry_msgs::Pose::ConstPtr& initial_
     m_current_pose.position = initial_pose->position;
     m_current_pose.orientation = initial_pose->orientation;
   }
+  ROS_INFO( "Initial pose received: (%.2f, %.2f)",
+            m_current_pose.position.x,
+            m_current_pose.position.y );
+  m_real_pose_pub.publish( m_current_pose );
+}
+
+void
+KobukiSimulator::set_initial_pose_with_cov( const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& initialpose )
+{
+  m_current_pose = initialpose->pose.pose;
   ROS_INFO( "Initial pose received: (%.2f, %.2f)",
             m_current_pose.position.x,
             m_current_pose.position.y );
