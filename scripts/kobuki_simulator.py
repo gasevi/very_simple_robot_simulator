@@ -26,8 +26,9 @@ class KobukiSimulator( object ):
     self.current_speed = Twist( Vector3( 0.0, 0.0, 0.0 ), Vector3( 0.0, 0.0, 0.0 ) )
 
     self.odom_broadcaster = tf.TransformBroadcaster()
-    rospy.Subscriber( 'yocs_cmd_vel_mux/output/cmd_vel', Twist, self.move )
-    rospy.Subscriber( 'yocs_cmd_vel_mux/active', String, self.velocity_state )
+    rospy.Subscriber( 'cmd_vel', Twist, self.move )
+    #rospy.Subscriber( 'yocs_cmd_vel_mux/output/cmd_vel', Twist, self.move )
+    #rospy.Subscriber( 'yocs_cmd_vel_mux/active', String, self.velocity_state )
     rospy.Subscriber( 'initial_pose', Pose, self.set_initial_pose )
     self.pub_odom = rospy.Publisher( 'odom', Odometry, queue_size = 10 )
     self.pub_real_pose = rospy.Publisher( 'real_pose', Pose, queue_size = 1 )
@@ -120,10 +121,11 @@ class KobukiSimulator( object ):
       yaw += delta_yaw
 
       # publish the message every 1 [s]
-      if count >= int( self.real_pose_publish_rate ): 
-        self.publish_odom( x, y, yaw, vx, vy, vyaw, current_time )
-        count = 0
-      count += 1
+      #if count >= int( self.real_pose_publish_rate ):
+      #  self.publish_odom( x, y, yaw, vx, vy, vyaw, current_time )
+      #  count = 0
+      #count += 1
+      self.publish_odom( x, y, yaw, vx, vy, vyaw, current_time )
 
       last_time = current_time
       rate.sleep()

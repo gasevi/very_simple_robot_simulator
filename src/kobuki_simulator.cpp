@@ -24,8 +24,9 @@ KobukiSimulator::KobukiSimulator( float initial_x,
   geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw( initial_yaw );
   m_current_pose.orientation = quat;
 
-  m_cmd_vel_sub = m_node_handle.subscribe( "yocs_cmd_vel_mux/output/cmd_vel", 1, &KobukiSimulator::move, this );
-  m_active_sub = m_node_handle.subscribe( "yocs_cmd_vel_mux/active", 1, &KobukiSimulator::velocity_state, this );
+  m_cmd_vel_sub = m_node_handle.subscribe( "cmd_vel", 1, &KobukiSimulator::move, this );
+  //m_cmd_vel_sub = m_node_handle.subscribe( "yocs_cmd_vel_mux/output/cmd_vel", 1, &KobukiSimulator::move, this );
+  //m_active_sub = m_node_handle.subscribe( "yocs_cmd_vel_mux/active", 1, &KobukiSimulator::velocity_state, this );
   m_initial_pose_sub = m_node_handle.subscribe( "initial_pose", 1, &KobukiSimulator::set_initial_pose, this );
   m_odom_pub = m_node_handle.advertise<nav_msgs::Odometry>( "odom", 10 );
   m_real_pose_pub = m_node_handle.advertise<geometry_msgs::Pose>( "real_pose", 1 );
@@ -173,6 +174,7 @@ KobukiSimulator::main_loop()
     y += delta_y;
     yaw += delta_yaw;
 
+    /*
     // publish the message every 1 [s]
     if( count >= kRealPosePublishRate )
     {
@@ -180,6 +182,8 @@ KobukiSimulator::main_loop()
       count = 0;
     }
     count += 1;
+    */
+    publish_odom( x, y, yaw, vx, vy, vyaw, current_time );
 
     last_time = current_time;
     rate.sleep();
