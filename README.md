@@ -10,8 +10,10 @@ A very simple robot simulator that uses cmd_vel_mux nodelet and implements a Kin
 
 ```sh
 cd <your_catkin_ws>/src
+git clone https://github.com/gasevi/yocs_cmd_vel_mux.git
 git clone https://github.com/gasevi/very_simple_robot_simulator.git
 cd ..
+sudo apt-get install python3-pil python3-pil.imagetk
 rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO
 catkin_make
 ```
