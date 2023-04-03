@@ -27,6 +27,7 @@ class KobukiSimulator( object ):
 
     self.odom_broadcaster = tf.TransformBroadcaster()
     rospy.Subscriber( 'cmd_vel', Twist, self.move )
+    rospy.Subscriber( 'cmd_vel_active', String, self.velocity_state )
     #rospy.Subscriber( 'yocs_cmd_vel_mux/output/cmd_vel', Twist, self.move )
     #rospy.Subscriber( 'yocs_cmd_vel_mux/active', String, self.velocity_state )
     rospy.Subscriber( 'initial_pose', Pose, self.set_initial_pose )

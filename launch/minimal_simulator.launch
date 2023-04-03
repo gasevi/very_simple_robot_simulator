@@ -4,7 +4,7 @@
   <arg name="config_file"           value="$(find yocs_cmd_vel_mux)/param/example.yaml"/>
 
   <!-- nodelet manager -->
-  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager_name)" args="manager"/>
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager_name)" args="manager" />
 
   <!-- velocity mulitplexer -->
   <include file="$(find yocs_cmd_vel_mux)/launch/cmd_vel_mux.launch">
@@ -12,7 +12,10 @@
     <arg name="config_file"           value="$(arg config_file)"/>
   </include>
 
-  <node pkg="very_simple_robot_simulator" name="kobuki_simulator" type="kobuki_simulator" />
+  <node pkg="very_simple_robot_simulator" name="kobuki_simulator" type="kobuki_simulator" >
+    <remap from="/cmd_vel" to="/yocs_cmd_vel_mux/output/cmd_vel" />
+    <remap from="/cmd_vel_active" to="/yocs_cmd_vel_mux/active" />
+  </node>
 
 </launch>
 
