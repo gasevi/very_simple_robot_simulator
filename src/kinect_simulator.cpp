@@ -10,9 +10,9 @@ using namespace cv;
 
 
 KinectSimulator::KinectSimulator( bool publish_2d_map )
-: m_global_map( 290, 500, CV_8UC1, Scalar( 255 ) ),
+: m_global_map( 296, 506, CV_8UC1, Scalar( 255 ) ),
   m_map_resolution( 0.01 ),
-  m_converter( 0, 290 * m_map_resolution, m_map_resolution ),
+  m_converter( 0, 0, m_map_resolution, 296 ),
   m_image_transport( m_node_handle ),
   m_publish_2d_map( publish_2d_map )
 {
@@ -315,7 +315,7 @@ KinectSimulator::set_map( const nav_msgs::OccupancyGrid::ConstPtr& msg )
       m_global_map.at<uchar>( y, x ) = ( 100 - static_cast<int>( msg->data[x + info.width * y] ) )*( 255/100.0 );
     }
   }
-  m_converter.reset( 0.0, info.height * info.resolution, info.resolution );
+  m_converter.reset( info.origin.position.x, info.origin.position.y, info.resolution, info.height );
   m_view_depth_pix = static_cast<int>( kViewDepth / m_map_resolution );
 }
 

@@ -96,9 +96,11 @@ class KinectSimulator( object ):
   def set_map( self, occupancy_grid ):
     width = occupancy_grid.info.width
     height = occupancy_grid.info.height
+    origin_x = occupancy_grid.info.origin.position.x
+    origin_y = occupancy_grid.info.origin.position.y
     self.map_resolution = occupancy_grid.info.resolution
     self.mapimg = 100 - np.array( occupancy_grid.data ).reshape( (height, width) )
-    self.converter = CoordinateConverter( 0.0, self.mapimg.shape[0] * self.map_resolution, self.map_resolution )
+    self.converter = CoordinateConverter( origin_x, origin_y, self.map_resolution, height )
     self.view_depth_pix = self.view_depth / self.map_resolution # [pix]
 
 

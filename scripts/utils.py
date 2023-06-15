@@ -6,19 +6,26 @@ def sawtooth( x ):
 
 class CoordinateConverter( object ):
 
-  def __init__( self, metric_zero_x, metric_zero_y, resolution ):
-    self.metric_zero_x = metric_zero_x
-    self.metric_zero_y = metric_zero_y
+  def __init__( self, origin_x, origin_y, resolution, map_height ):
+    self.origin_x = origin_x
+    self.origin_y = origin_y
     self.resolution = resolution
+    self.map_height = map_height
+
+  def update( self, origin_x, origin_y, resolution ):
+    self.origin_x = origin_x
+    self.origin_y = origin_y
+    self.resolution = resolution
+    self.map_height = map_height
 
   def metric2pixel( self, x, y ):
-    xpix =   int( ( x - self.metric_zero_x ) / self.resolution )
-    ypix = - int( ( y - self.metric_zero_y ) / self.resolution )
+    xpix =   int( ( x - self.origin_x ) / self.resolution )
+    ypix = - int( ( y - self.origin_y ) / self.resolution ) + self.map_height
     return ( xpix, ypix )
 
   def pixel2metric( self, xpix, ypix ):
-    x = xpix * self.resolution + self.metric_zero_x
-    y = - ypix * self.resolution + self.metric_zero_y
+    x = xpix * self.resolution + self.origin_x
+    y = ( self.map_height - ypix ) * self.resolution + self.origin_y
     return ( x, y )
 
 

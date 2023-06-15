@@ -17,8 +17,8 @@ LidarSimulator::LidarSimulator( bool publish_2d_map )
   m_z_max( kDefaultViewDepth ), // [m]
   m_std_error( 0.005 ),         // [m]
   m_seq( 0 ),
-  m_converter( 0, 290 * m_map_resolution, m_map_resolution ),
-  m_global_map( 290, 500, CV_8UC1, Scalar( 255 ) ),
+  m_converter( 0, 0, m_map_resolution, 296 ),
+  m_global_map( 296, 506, CV_8UC1, Scalar( 255 ) ),
   m_lidar_fov( M_PI ),
   m_lidar_n_h_scans( 181 ),
   m_image_transport( m_node_handle ),
@@ -321,11 +321,10 @@ LidarSimulator::set_map( const nav_msgs::OccupancyGrid::ConstPtr& msg )
     for( unsigned int x = 0 ; x < info.width ; ++x )
     {
       // from occupancy grid to grayscale
-      m_global_map.at<uchar>( info.height - 1 - y, x ) = ( 100 - static_cast<int>( msg->data[x + info.width * y] ) )*( 255/100.0 );
+      m_global_map.at<uchar>( y, x ) = ( 100 - static_cast<int>( msg->data[x + info.width * y] ) )*( 255/100.0 );
     }
   }
-  //m_converter.reset( 0.0, info.height * info.resolution, info.resolution );
-  m_converter.reset( info.origin.position.x, info.origin.position.y + info.height * info.resolution, info.resolution );
+  m_converter.reset( info.origin.position.x, info.origin.position.y, info.resolution, info.height );
   m_view_depth_pix = static_cast<int>( m_z_max / m_map_resolution );
 }
 

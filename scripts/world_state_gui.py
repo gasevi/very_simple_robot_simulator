@@ -226,8 +226,8 @@ class WorldStateGUI( Frame ):
     self.robot_diameter = 0.355 # [m]
     self.robot_radio = self.robot_diameter / 2.0 # [m]
     self.robot_radio_pix = int( self.robot_radio / self.gui_resolution )
-    self.gui_converter = CoordinateConverter( 0.0, self.height * self.gui_resolution, self.gui_resolution )
-    self.map_converter = CoordinateConverter( 0.0, self.height * self.map_resolution, self.map_resolution )
+    self.gui_converter = CoordinateConverter( 0.0, 0.0, self.gui_resolution, self.height )
+    self.map_converter = CoordinateConverter( 0.0, 0.0, self.map_resolution, self.height )
     self.cv_bridge = CvBridge()
 
     self.root = Tk()
@@ -427,16 +427,16 @@ class WorldStateGUI( Frame ):
       map_file = os.path.join( map_path, map_filename )
     else:
       map_file = metadata['image']
+    npimage = cv2.imread( map_file, cv2.IMREAD_GRAYSCALE )
 
     self.map_resolution = metadata['resolution'] # [m/pix]
-    self.map_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.map_resolution )
-    self.gui_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.gui_resolution )
+    self.map_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.map_resolution, npimage.shape[0] )
+    self.gui_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.gui_resolution, npimage.shape[0] )
 
     for st_name, st_object in self.statem.items():
       if hasattr( st_object, 'converter' ):
         st_object.converter = self.gui_converter
 
-    npimage = cv2.imread( map_file, cv2.IMREAD_GRAYSCALE )
     pilimage = PILImage.fromarray( npimage )
     if self.map_resolution != self.gui_resolution:
       factor = self.map_resolution / self.gui_resolution
@@ -479,7 +479,7 @@ class WorldStateGUI( Frame ):
 
     width, height = background_image.size
     map_quat = quaternion_from_euler( 0.0, 0.0, 0.0 )
-    map_pose = Pose( Point( 0.0, height * self.map_resolution, 0.0 ), Quaternion( *map_quat ) )
+    map_pose = Pose( Point( self.map_converter.origin_x, self.map_converter.origin_y, 0.0 ), Quaternion( *map_quat ) )
     map_metadata = MapMetaData( rospy.Time.now(), self.map_resolution, width, height, map_pose )
     self.pub_map_metadata.publish( map_metadata )
 

@@ -39,19 +39,28 @@ float sawtooth( float x )
 
 
 void
-CoordinateConverter::reset( float metric_zero_x, float metric_zero_y, float resolution )
+CoordinateConverter::reset( float metric_zero_x, float metric_zero_y, float resolution, int map_height )
 {
   m_metric_zero_x = metric_zero_x;
   m_metric_zero_y = metric_zero_y;
   m_resolution = resolution;
+  m_map_height = map_height;
 }
 
 pair<int, int>
 CoordinateConverter::metric2pixel( float x, float y )
 {
   int xpix =   static_cast<int>( ( x - m_metric_zero_x ) / m_resolution );
-  int ypix = - static_cast<int>( ( y - m_metric_zero_y ) / m_resolution );
+  int ypix = - static_cast<int>( ( y - m_metric_zero_y ) / m_resolution ) + m_map_height;
   return pair<int, int>( xpix, ypix );
+}
+
+pair<float, float>
+CoordinateConverter::pixel2metric( int xpix, int ypix )
+{
+  float x = xpix * m_resolution + m_metric_zero_x;
+  float y = (m_map_height - ypix) * m_resolution + m_metric_zero_y;
+  return pair<float, float>( x, y );
 }
 
 
