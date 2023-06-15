@@ -25,6 +25,7 @@ KobukiSimulator::KobukiSimulator( float initial_x,
   m_current_pose.orientation = quat;
 
   m_cmd_vel_sub = m_node_handle.subscribe( "cmd_vel", 1, &KobukiSimulator::move, this );
+  m_active_sub = m_node_handle.subscribe( "cmd_vel_active", 1, &KobukiSimulator::velocity_state, this );
   //m_cmd_vel_sub = m_node_handle.subscribe( "yocs_cmd_vel_mux/output/cmd_vel", 1, &KobukiSimulator::move, this );
   //m_active_sub = m_node_handle.subscribe( "yocs_cmd_vel_mux/active", 1, &KobukiSimulator::velocity_state, this );
   m_initial_pose_sub = m_node_handle.subscribe( "initial_pose", 1, &KobukiSimulator::set_initial_pose, this );
