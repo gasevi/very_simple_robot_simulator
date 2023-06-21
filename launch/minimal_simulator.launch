@@ -15,6 +15,9 @@
   <node pkg="very_simple_robot_simulator" name="kobuki_simulator" type="kobuki_simulator" >
     <remap from="/cmd_vel" to="/yocs_cmd_vel_mux/output/cmd_vel" />
     <remap from="/cmd_vel_active" to="/yocs_cmd_vel_mux/active" />
+    <param name="initial_x" value="0.5" />
+    <param name="initial_y" value="0.5" />
+    <param name="initial_yaw" value="0.0" />
   </node>
 
 </launch>

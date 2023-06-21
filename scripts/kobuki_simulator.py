@@ -14,6 +14,13 @@ class KobukiSimulator( object ):
     rospy.loginfo( 'Initializing Kobuki Simulator' )
     rospy.on_shutdown( self.shutdown )
 
+    if rospy.has_param( '/kobuki_simulator/initial_x' ):
+      initial_x = rospy.get_param( '/kobuki_simulator/initial_x' )
+    if rospy.has_param( '/kobuki_simulator/initial_y' ):
+      initial_y = rospy.get_param( '/kobuki_simulator/initial_y' )
+    if rospy.has_param( '/kobuki_simulator/initial_yaw' ):
+      initial_yaw = rospy.get_param( '/kobuki_simulator/initial_yaw' )
+
     self.initial_x = initial_x
     self.initial_y = initial_y
     self.initial_yaw = initial_yaw

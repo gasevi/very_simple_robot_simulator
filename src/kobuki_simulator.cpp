@@ -18,10 +18,14 @@ KobukiSimulator::KobukiSimulator( float initial_x,
 {
   ROS_INFO( "Initializing Kobuki Simulator" );
 
-  m_current_pose.position.x = initial_x;
-  m_current_pose.position.y = initial_y;
+  m_node_handle.param<float>( "/kobuki_simulator/initial_x", m_initial_x, initial_x );
+  m_node_handle.param<float>( "/kobuki_simulator/initial_y", m_initial_y, initial_y );
+  m_node_handle.param<float>( "/kobuki_simulator/initial_yaw", m_initial_yaw, initial_yaw );
+
+  m_current_pose.position.x = m_initial_x;
+  m_current_pose.position.y = m_initial_y;
   m_current_pose.position.z = 0;
-  geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw( initial_yaw );
+  geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw( m_initial_yaw );
   m_current_pose.orientation = quat;
 
   m_cmd_vel_sub = m_node_handle.subscribe( "cmd_vel", 1, &KobukiSimulator::move, this );
