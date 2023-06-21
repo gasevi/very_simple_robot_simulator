@@ -4,6 +4,7 @@ import os.path
 import signal
 import copy
 import rospy
+import tf
 from geometry_msgs.msg import Pose, Quaternion, Point
 from std_msgs.msg import Header
 from nav_msgs.msg import MapMetaData, OccupancyGrid
@@ -230,6 +231,9 @@ class WorldStateGUI( Frame ):
     self.map_converter = CoordinateConverter( 0.0, 0.0, self.map_resolution, self.height )
     self.cv_bridge = CvBridge()
 
+    self.map_broadcaster = tf.TransformBroadcaster()
+    rospy.sleep( 1.0 ) # waiting for the broadcaster to be ready
+
     self.root = Tk()
     self.root.geometry( '%dx%d' % (self.width, self.height) )
     self.root.title( 'World State' )
@@ -274,16 +278,14 @@ class WorldStateGUI( Frame ):
     self.pub_map = rospy.Publisher( 'map', OccupancyGrid, queue_size = 1, latch = True )
     self.pub_initial_pose = rospy.Publisher( 'initial_pose', Pose, queue_size = 1 )
 
-    self.update_map()
-
     if rospy.has_param( '/world_state_gui/map_file' ):
       yaml_file = rospy.get_param( '/world_state_gui/map_file' )
       rospy.loginfo( 'Loading map file: %s' % (yaml_file) )
       if os.path.isfile( yaml_file ):
         self.load_map( yaml_file )
-        self.update_map()
       else:
         rospy.logerr( 'Map file [%s] does not exist' % (yaml_file) )
+    self.update_map()
 
   def add_margin( self, image ):
     height, width = image.shape[:2]
@@ -483,12 +485,21 @@ class WorldStateGUI( Frame ):
     map_metadata = MapMetaData( rospy.Time.now(), self.map_resolution, width, height, map_pose )
     self.pub_map_metadata.publish( map_metadata )
 
-    og_header = Header( 0, rospy.Time.now(), 'map_frame' )
+    og_header = Header( 0, rospy.Time.now(), 'map' )
     og_data = np.array( background_image )
     og_data = ( 100 - ( og_data / 255.0 ) * 100 ).astype( np.uint8 )
+    og_data = np.flip( og_data, axis = 0 )
     og_data = og_data.reshape( height * width )
     occupancy_grid = OccupancyGrid( og_header, map_metadata, og_data.tolist() )
     self.pub_map.publish( occupancy_grid )
+
+    self.map_broadcaster.sendTransform(
+                                        (0.0, 0.0, 0.0),
+                                        quaternion_from_euler(0.0, 0.0, 0.0),
+                                        rospy.Time.now(),
+                                        'map',
+                                        'world'
+                                      )
 
   def reset_state( self ):
     self.send_initial_pose( [float('inf'), float('inf'), 0.0], True )

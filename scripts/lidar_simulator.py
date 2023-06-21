@@ -91,6 +91,7 @@ class LidarSimulator( object ):
     origin_y = occupancy_grid.info.origin.position.y
     self.map_resolution = occupancy_grid.info.resolution
     self.mapimg = 100 - np.array( occupancy_grid.data ).reshape( (height, width) )
+    self.mapimg = np.flip( self.mapimg, axis = 0 )
     self.converter = CoordinateConverter( origin_x, origin_y, self.map_resolution, height )
     self.view_depth_pix = self.view_depth / self.map_resolution # [pix]
 

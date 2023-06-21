@@ -312,7 +312,7 @@ KinectSimulator::set_map( const nav_msgs::OccupancyGrid::ConstPtr& msg )
     for( unsigned int x = 0 ; x < info.width ; ++x )
     {
       // from occupancy grid to grayscale
-      m_global_map.at<uchar>( y, x ) = ( 100 - static_cast<int>( msg->data[x + info.width * y] ) )*( 255/100.0 );
+      m_global_map.at<uchar>( info.height - 1 - y, x ) = ( 100 - static_cast<int>( msg->data[x + info.width * y] ) )*( 255/100.0 );
     }
   }
   m_converter.reset( info.origin.position.x, info.origin.position.y, info.resolution, info.height );
