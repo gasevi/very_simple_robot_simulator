@@ -432,8 +432,11 @@ class WorldStateGUI( Frame ):
     npimage = cv2.imread( map_file, cv2.IMREAD_GRAYSCALE )
 
     self.map_resolution = metadata['resolution'] # [m/pix]
+    self.gui_resolution = metadata['resolution'] # [m/pix]
     self.map_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.map_resolution, npimage.shape[0] )
     self.gui_converter = CoordinateConverter( metadata['origin'][0], metadata['origin'][1], self.gui_resolution, npimage.shape[0] )
+
+    self.robot_radio_pix = int( self.robot_radio / self.gui_resolution )
 
     for st_name, st_object in self.statem.items():
       if hasattr( st_object, 'converter' ):
