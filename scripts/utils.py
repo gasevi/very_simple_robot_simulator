@@ -12,7 +12,7 @@ class CoordinateConverter( object ):
     self.resolution = resolution
     self.map_height = map_height
 
-  def update( self, origin_x, origin_y, resolution ):
+  def update( self, origin_x, origin_y, resolution, map_height ):
     self.origin_x = origin_x
     self.origin_y = origin_y
     self.resolution = resolution
