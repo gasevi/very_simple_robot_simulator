@@ -39,10 +39,10 @@ float sawtooth( float x )
 
 
 void
-CoordinateConverter::reset( float metric_zero_x, float metric_zero_y, float resolution, int map_height )
+CoordinateConverter::reset( float origin_x, float origin_y, float resolution, int map_height )
 {
-  m_metric_zero_x = metric_zero_x;
-  m_metric_zero_y = metric_zero_y;
+  m_origin_x = origin_x;
+  m_origin_y = origin_y;
   m_resolution = resolution;
   m_map_height = map_height;
 }
@@ -50,16 +50,16 @@ CoordinateConverter::reset( float metric_zero_x, float metric_zero_y, float reso
 pair<int, int>
 CoordinateConverter::metric2pixel( float x, float y )
 {
-  int xpix =   static_cast<int>( ( x - m_metric_zero_x ) / m_resolution );
-  int ypix = - static_cast<int>( ( y - m_metric_zero_y ) / m_resolution ) + m_map_height;
+  int xpix =   static_cast<int>( ( x - m_origin_x ) / m_resolution );
+  int ypix = - static_cast<int>( ( y - m_origin_y ) / m_resolution ) + m_map_height;
   return pair<int, int>( xpix, ypix );
 }
 
 pair<float, float>
 CoordinateConverter::pixel2metric( int xpix, int ypix )
 {
-  float x = xpix * m_resolution + m_metric_zero_x;
-  float y = (m_map_height - ypix) * m_resolution + m_metric_zero_y;
+  float x = xpix * m_resolution + m_origin_x;
+  float y = (m_map_height - ypix) * m_resolution + m_origin_y;
   return pair<float, float>( x, y );
 }
 
