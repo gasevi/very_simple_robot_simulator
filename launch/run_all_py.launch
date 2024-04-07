@@ -1,8 +1,0 @@
-<launch>
-
-  <include file="$(find very_simple_robot_simulator)/launch/minimal_simulator_py.launch" />
-  <include file="$(find very_simple_robot_simulator)/launch/openni_simulator_py.launch" />
-  <include file="$(find very_simple_robot_simulator)/launch/lidar_simulator_py.launch" />
-  <include file="$(find very_simple_robot_simulator)/launch/world_state.launch" />
-
-</launch>

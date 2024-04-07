@@ -1,0 +1,5 @@
+<launch>
+
+ <node pkg="very_simple_robot_simulator" name="world_state_gui" exec="world_state_gui.py" output="screen" />
+
+</launch>

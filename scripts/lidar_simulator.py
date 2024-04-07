@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import rospy
+import rclpy
+from rclpy.node import Node
 from geometry_msgs.msg import Pose
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid
@@ -11,9 +12,10 @@ from rangefinder import build_pixel_rangefinder
 from utils import CoordinateConverter
 
 
-class LidarSimulator( object ):
+class LidarSimulator( Node ):
 
   def __init__( self ):
+    super().__init__( 'lidar_simulator' )
     self.hfov = 57*np.pi/180.0 # [rad] (57 [degrees])
     self.n_h_scans = 57
     self.map_resolution = 0.01 # [m/pix]
@@ -97,7 +99,7 @@ class LidarSimulator( object ):
 
 
 if __name__ == '__main__':
-  rospy.init_node( 'lidar_simulator' )
+  rclpy.init()
   lidar_sim = LidarSimulator()
-  rospy.spin()
+  rclpy.spin()
 

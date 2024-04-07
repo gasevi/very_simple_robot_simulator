@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
   
-import rospy
+import rclpy
+from rclpy.node import Node
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import OccupancyGrid
 from sensor_msgs.msg import Image
-from tf.transformations import euler_from_quaternion
+from tf_transformations import euler_from_quaternion
 import numpy as np
 import cv2
 from cv_bridge import CvBridge
@@ -13,9 +14,10 @@ from utils import CoordinateConverter
 from rangefinder import build_pixel_rangefinder
 
 
-class KinectSimulator( object ):
+class KinectSimulator( Node ):
 
   def __init__( self ):
+    super().__init__( 'kinect_simulator' )
     self.kinect_height = 0.3 # [m]
     self.wall_height = 0.5 # [m]
     self.max_depth = 10.0 # [m]
@@ -36,9 +38,12 @@ class KinectSimulator( object ):
     self.converter = None
     self.mapimg = np.array( [] )
     self.cv_bridge = CvBridge()
-    rospy.Subscriber( '/real_pose', Pose, self.new_pose, queue_size = 1 )
-    rospy.Subscriber( 'map', OccupancyGrid, self.set_map )
-    self.pub_depth = rospy.Publisher( 'camera/depth/image_raw', Image, queue_size = 1 )
+    #rospy.Subscriber( '/real_pose', Pose, self.new_pose, queue_size = 1 )
+    self.create_subscription( Pose, '/real_pose', self.new_pose, 1 )
+    #rospy.Subscriber( 'map', OccupancyGrid, self.set_map )
+    self.create_subscription( OccupancyGrid, 'map', self.set_map, 1 )
+    #self.pub_depth = rospy.Publisher( 'camera/depth/image_raw', Image, queue_size = 1 )
+    self.pub_depth = self.create_publisher( Image, 'camera/depth/image_raw', 1 )
 
   def new_pose( self, pose ):
     if len( self.mapimg ) == 0:
@@ -106,7 +111,8 @@ class KinectSimulator( object ):
 
 
 if __name__ == '__main__':
-  rospy.init_node( 'kinect_simulator' )
+  rclpy.init()
   kinect_simulator = KinectSimulator()
-  rospy.spin()
+  rclpy.spin( kinect_simulator )
+  rclpy.shutdown()
 

@@ -1,19 +1,28 @@
 #include "kinect_simulator.h"
 #include "vsrs_utils.h"
 
-#include <ros/console.h>
-#include <tf/transform_datatypes.h>
+//#include <ros/console.h>
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/image.hpp"
+#include "std_msgs/msg/header.hpp"
+#include <tf2/transform_datatypes.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <cv_bridge/cv_bridge.h>
 
 using namespace std;
 using namespace cv;
+using std::placeholders::_1;
 
 
-KinectSimulator::KinectSimulator( bool publish_2d_map )
-: m_global_map( 296, 506, CV_8UC1, Scalar( 255 ) ),
+KinectSimulator::KinectSimulator( string node_name, bool publish_2d_map )
+: Node( node_name ),
+  m_global_map( 296, 506, CV_8UC1, Scalar( 255 ) ),
   m_map_resolution( 0.01 ),
   m_converter( 0, 0, m_map_resolution, 296 ),
+  m_node_handle( std::shared_ptr<KinectSimulator>(this, [](auto *) {}) ),
   m_image_transport( m_node_handle ),
+  m_depth_image_pub( m_image_transport.advertise( "camera/depth/image_raw", 1 ) ),
+  m_lidar_2dmap_pub( m_image_transport.advertise( "camera/depth/lidar_in_map", 1 ) ),
   m_publish_2d_map( publish_2d_map )
 {
   m_num_horizontal_scan = 50;
@@ -22,13 +31,17 @@ KinectSimulator::KinectSimulator( bool publish_2d_map )
   m_horizontal_beam_angles = linspace( kHfov / 2.0, - kHfov / 2.0, m_num_horizontal_scan );
   m_vertical_beam_angles = linspace( kVfov / 2.0, - kVfov / 2.0, m_num_vertical_scan );
 
-  m_real_pose_sub = m_node_handle.subscribe( "real_pose", 1, &KinectSimulator::new_pose, this );
-  m_map_sub = m_node_handle.subscribe( "map", 1, &KinectSimulator::set_map, this );
-  m_depth_image_pub = m_image_transport.advertise( "camera/depth/image_raw", 1 );
-  if( m_publish_2d_map )
-  {
-    m_lidar_2dmap_pub = m_image_transport.advertise( "camera/depth/lidar_in_map", 1 );
-  }
+  m_real_pose_sub = this->create_subscription<geometry_msgs::msg::Pose>( "real_pose",
+                                                                         1,
+                                                                         std::bind(&KinectSimulator::new_pose, this, _1) );
+  m_map_sub = this->create_subscription<nav_msgs::msg::OccupancyGrid>( "map",
+                                                                       1,
+                                                                       std::bind(&KinectSimulator::set_map, this, _1) );
+  //m_depth_image_pub = m_image_transport.advertise( "camera/depth/image_raw", 1 );
+  //if( m_publish_2d_map )
+  //{
+  //  m_lidar_2dmap_pub = m_image_transport.advertise( "camera/depth/lidar_in_map", 1 );
+  //}
 }
 
 void
@@ -202,13 +215,13 @@ KinectSimulator::build_pixel_lidar( int robot_pose_x,
        color[1] = 0;
        color[2] = 0;
     }
-    sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage( std_msgs::Header(), "rgb8", map_to_send ).toImageMsg();
-    m_lidar_2dmap_pub.publish( image_msg );
+    sensor_msgs::msg::Image::SharedPtr image_msg = cv_bridge::CvImage( std_msgs::msg::Header(), "rgb8", map_to_send ).toImageMsg();
+    m_lidar_2dmap_pub.publish( *image_msg.get() );
   }
 }
 
 void
-KinectSimulator::new_pose( const geometry_msgs::Pose::ConstPtr& pose_msg )
+KinectSimulator::new_pose( const geometry_msgs::msg::Pose::ConstPtr& pose_msg )
 {
   Mat depth_image( m_num_vertical_scan, m_num_horizontal_scan, CV_32FC1, Scalar( kMaxDepth ) );
 
@@ -220,16 +233,16 @@ KinectSimulator::new_pose( const geometry_msgs::Pose::ConstPtr& pose_msg )
     Mat depth_image_resized;
     resize( depth_image, depth_image_resized, new_size );
 
-    sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage( std_msgs::Header(), "32FC1", depth_image_resized ).toImageMsg();
-    m_depth_image_pub.publish( image_msg );
+    sensor_msgs::msg::Image::SharedPtr image_msg = cv_bridge::CvImage( std_msgs::msg::Header(), "32FC1", depth_image_resized ).toImageMsg();
+    m_depth_image_pub.publish( *image_msg.get() );
     return;
   }
 
-  tf::Quaternion q( pose_msg->orientation.x,
+  tf2::Quaternion q( pose_msg->orientation.x,
                     pose_msg->orientation.y,
                     pose_msg->orientation.z,
                     pose_msg->orientation.w );
-  tf::Matrix3x3 m( q );
+  tf2::Matrix3x3 m( q );
   double roll, pitch, yaw;
   m.getRPY( roll, pitch, yaw );
 
@@ -296,16 +309,16 @@ KinectSimulator::new_pose( const geometry_msgs::Pose::ConstPtr& pose_msg )
   Mat depth_image_resized;
   resize( depth_image, depth_image_resized, new_size );
 
-  sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage( std_msgs::Header(), "32FC1", depth_image_resized ).toImageMsg();
-  m_depth_image_pub.publish( image_msg );
+  sensor_msgs::msg::Image::SharedPtr image_msg = cv_bridge::CvImage( std_msgs::msg::Header(), "32FC1", depth_image_resized ).toImageMsg();
+  m_depth_image_pub.publish( *image_msg.get() );
 }
 
 void
-KinectSimulator::set_map( const nav_msgs::OccupancyGrid::ConstPtr& msg )
+KinectSimulator::set_map( const nav_msgs::msg::OccupancyGrid::ConstPtr& msg )
 {
-  std_msgs::Header header = msg->header;
-  nav_msgs::MapMetaData info = msg->info;
-  ROS_INFO( "New map received (%d, %d, %f)", info.width, info.height, info.resolution );
+  std_msgs::msg::Header header = msg->header;
+  nav_msgs::msg::MapMetaData info = msg->info;
+  RCLCPP_INFO( get_logger(), "New map received (%d, %d, %f)", info.width, info.height, info.resolution );
   m_map_resolution = info.resolution;
   for( unsigned int y = 0 ; y < info.height ; ++y )
   {

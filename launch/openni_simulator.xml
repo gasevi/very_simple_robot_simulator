@@ -1,6 +1,6 @@
 <launch>
 
   <!-- <node pkg="very_simple_robot_simulator" name="kinect_simulator" type="kinect_simulator.py" /> -->
-  <node pkg="very_simple_robot_simulator" name="kinect_simulator" type="kinect_simulator" />
+  <node pkg="very_simple_robot_simulator" name="kinect_simulator" exec="kinect_simulator" />
 
 </launch>

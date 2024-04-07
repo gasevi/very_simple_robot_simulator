@@ -1,12 +1,12 @@
 #include "kinect_simulator.h"
 
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 int main( int argc, char **argv )
 {
-  ros::init( argc, argv, "kinect_simulator" );
-  KinectSimulator kinect_simulator;
-  ros::spin();
+  rclcpp::init( argc, argv );
+  rclcpp::spin( std::make_shared<KinectSimulator>( "kinect_simulator" ) );
+  rclcpp::shutdown();
   return 0;
 }
 

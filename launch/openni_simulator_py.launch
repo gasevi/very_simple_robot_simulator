@@ -1,5 +1,0 @@
-<launch>
-
-  <node pkg="very_simple_robot_simulator" name="kinect_simulator" type="kinect_simulator.py" />
-
-</launch>

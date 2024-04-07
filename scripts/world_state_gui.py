@@ -3,12 +3,16 @@
 import os.path
 import signal
 import copy
-import rospy
-import tf
-from geometry_msgs.msg import Pose, Quaternion, Point
+import time
+import threading
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, DurabilityPolicy
+import tf2_ros
+from tf_transformations import euler_from_quaternion, quaternion_from_euler
+from geometry_msgs.msg import Pose, Quaternion, Point, TransformStamped
 from std_msgs.msg import Header
 from nav_msgs.msg import MapMetaData, OccupancyGrid
-from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import numpy as np
 from PIL import Image as PILImage, ImageDraw as PILImageDraw, ImageTk
 try:
@@ -216,9 +220,10 @@ class DeleteWallMode( CanvasMode ):
       self.canvas.delete( current_tag )
 
 
-class WorldStateGUI( Frame ):
+class WorldStateGUI( Node, Frame ):
 
   def __init__( self, width = 500, height = 290, resolution = 0.01 ):
+    super().__init__( 'world_state_gui' )
     self.wall_thick = 3
     self.width = width + 2 * self.wall_thick
     self.height = height + 2 * self.wall_thick
@@ -231,8 +236,8 @@ class WorldStateGUI( Frame ):
     self.map_converter = CoordinateConverter( 0.0, 0.0, self.map_resolution, self.height )
     self.cv_bridge = CvBridge()
 
-    self.map_broadcaster = tf.TransformBroadcaster()
-    rospy.sleep( 1.0 ) # waiting for the broadcaster to be ready
+    self.map_broadcaster = tf2_ros.TransformBroadcaster( self )
+    time.sleep( 1.0 ) # waiting for the broadcaster to be ready
 
     self.root = Tk()
     self.root.geometry( '%dx%d' % (self.width, self.height) )
@@ -273,19 +278,25 @@ class WorldStateGUI( Frame ):
     self.statem['delete_wall_mode'] = DeleteWallMode( self.canvas )
     self.cstate = 'idle_mode'
 
-    rospy.Subscriber( 'real_pose', Pose, self.update_robot_pose )
-    self.pub_map_metadata = rospy.Publisher( 'map_metadata', MapMetaData, queue_size = 1, latch = True )
-    self.pub_map = rospy.Publisher( 'map', OccupancyGrid, queue_size = 1, latch = True )
-    self.pub_initial_pose = rospy.Publisher( 'initial_pose', Pose, queue_size = 1 )
+    latching_qos = QoSProfile( depth = 1, durability = DurabilityPolicy.TRANSIENT_LOCAL )
+    #self.pub_map_metadata = rospy.Publisher( 'map_metadata', MapMetaData, queue_size = 1, latch = True )
+    self.pub_map_metadata = self.create_publisher( MapMetaData, '/map_metadata', qos_profile = latching_qos )
+    #self.pub_map = rospy.Publisher( 'map', OccupancyGrid, queue_size = 1, latch = True )
+    self.pub_map = self.create_publisher( OccupancyGrid, '/map', qos_profile = latching_qos )
+    #self.pub_initial_pose = rospy.Publisher( 'initial_pose', Pose, queue_size = 1 )
+    self.pub_initial_pose = self.create_publisher( Pose, '/initial_pose', 10 )
+    #rospy.Subscriber( 'real_pose', Pose, self.update_robot_pose )
+    self.create_subscription( Pose, '/real_pose', self.update_robot_pose, 1 )
 
-    if rospy.has_param( '/world_state_gui/map_file' ):
-      yaml_file = rospy.get_param( '/world_state_gui/map_file' )
-      rospy.loginfo( 'Loading map file: %s' % (yaml_file) )
+    if self.has_parameter( '/world_state_gui/map_file' ):
+      yaml_file = rclpy.get_parameter( '/world_state_gui/map_file' )
+      self.get_logger().info( 'Loading map file: %s' % (yaml_file) )
       if os.path.isfile( yaml_file ):
         self.load_map( yaml_file )
       else:
-        rospy.logerr( 'Map file [%s] does not exist' % (yaml_file) )
+        self.get_logger().error( 'Map file [%s] does not exist' % (yaml_file) )
     self.update_map()
+    self.get_logger().info( 'World State GUI initialized' )
 
   def add_margin( self, image ):
     height, width = image.shape[:2]
@@ -388,8 +399,9 @@ class WorldStateGUI( Frame ):
     else:
       x, y = self.gui_converter.pixel2metric( robot_pose[0], robot_pose[1] )
       yaw = robot_pose[2]
-    quat = quaternion_from_euler( 0.0, 0.0, yaw )
-    pix_pose = Pose( Point( x, y, 0.0 ), Quaternion( *quat ) )
+    q = quaternion_from_euler( 0.0, 0.0, yaw )
+    pix_pose = Pose( position = Point( x = x, y = y, z = 0.0 ),
+                     orientation = Quaternion( x = q[0], y = q[1], z = q[2], w = q[3] ) )
     self.pub_initial_pose.publish( pix_pose )
 
   def update_robot_pose( self, pose ):
@@ -417,7 +429,7 @@ class WorldStateGUI( Frame ):
         y1 = int( y - self.robot_radio_pix * np.sin( yaw ) )
         coords = [x, y, x1, y1]
         self.canvas.coords( 'robot_direction', *coords )
-      #rospy.loginfo( 'x: %d, y: %d, yaw: %f' % ( x, y, yaw ) )
+      self.get_logger().info( 'x: %d, y: %d, yaw: %f' % ( x, y, yaw ) )
 
   def load_map( self, yaml_file ):
     with open( yaml_file ) as fd:
@@ -483,26 +495,38 @@ class WorldStateGUI( Frame ):
       background_image = background_image.resize( (width, height), resample = PILImage.NEAREST )
 
     width, height = background_image.size
+    map_position = Point( x = self.map_converter.origin_x, y = self.map_converter.origin_y, z = 0.0 )
     map_quat = quaternion_from_euler( 0.0, 0.0, 0.0 )
-    map_pose = Pose( Point( self.map_converter.origin_x, self.map_converter.origin_y, 0.0 ), Quaternion( *map_quat ) )
-    map_metadata = MapMetaData( rospy.Time.now(), self.map_resolution, width, height, map_pose )
+    map_quaternion = Quaternion( x = map_quat[0], y = map_quat[1], z = map_quat[2], w = map_quat[3] )
+    map_pose = Pose( position = map_position, orientation = map_quaternion )
+    map_metadata = MapMetaData( resolution = self.map_resolution, width = width, height = height, origin = map_pose )
+
     self.pub_map_metadata.publish( map_metadata )
 
-    og_header = Header( 0, rospy.Time.now(), 'map' )
+    og_header = Header( stamp = self.get_clock().now().to_msg(), frame_id = 'map' )
     og_data = np.array( background_image )
     og_data = ( 100 - ( og_data / 255.0 ) * 100 ).astype( np.uint8 )
     og_data = np.flip( og_data, axis = 0 )
     og_data = og_data.reshape( height * width )
-    occupancy_grid = OccupancyGrid( og_header, map_metadata, og_data.tolist() )
+    occupancy_grid = OccupancyGrid( header = og_header, info = map_metadata, data = og_data.tolist() )
     self.pub_map.publish( occupancy_grid )
 
-    self.map_broadcaster.sendTransform(
-                                        (0.0, 0.0, 0.0),
-                                        quaternion_from_euler(0.0, 0.0, 0.0),
-                                        rospy.Time.now(),
-                                        'map',
-                                        'world'
-                                      )
+    t = TransformStamped()
+    t.header.stamp = self.get_clock().now().to_msg()
+    t.header.frame_id = 'world'
+    t.child_frame_id = 'map'
+
+    t.transform.translation.x = 0.0
+    t.transform.translation.y = 0.0
+    t.transform.translation.z = 0.0
+
+    q = quaternion_from_euler(0, 0, 0.0)
+    t.transform.rotation.x = q[0]
+    t.transform.rotation.y = q[1]
+    t.transform.rotation.z = q[2]
+    t.transform.rotation.w = q[3]
+
+    self.map_broadcaster.sendTransform( t )
 
   def reset_state( self ):
     self.send_initial_pose( [float('inf'), float('inf'), 0.0], True )
@@ -511,20 +535,28 @@ class WorldStateGUI( Frame ):
     self.root.mainloop()
 
   def sigint_handler( self, signum, frame ):
-    rospy.loginfo( 'world_state_gui is shutting down' )
+    self.get_logger().info( 'world_state_gui is shutting down' )
     self.root.quit()
     self.root.update()
-    rospy.signal_shutdown( 'Signal received [%d]' % ( signum ) )
+    rclpy.shutdown()
 
   def on_exit( self ):
     self.quit()
 
 
 if __name__ == '__main__':
-  rospy.init_node( 'world_state_gui', disable_signals = True )
+  rclpy.init()
   world_state_gui = WorldStateGUI()
+
   signal.signal( signal.SIGINT, world_state_gui.sigint_handler )
   signal.signal( signal.SIGTERM, world_state_gui.sigint_handler )
+
+  thread = threading.Thread( target = rclpy.spin, args = (world_state_gui, ), daemon = True )
+  thread.start()
+
   world_state_gui.mainloop()
+
+  rclpy.shutdown()
+  thread.join()
 
 

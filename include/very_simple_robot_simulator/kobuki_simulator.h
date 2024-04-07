@@ -1,20 +1,23 @@
 #ifndef __KOBUKI_SIMULATOR_H__
 #define __KOBUKI_SIMULATOR_H__
 
-#include <ros/ros.h>
-#include <std_msgs/String.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <geometry_msgs/Twist.h>
-#include <nav_msgs/Odometry.h>
-#include <tf/transform_broadcaster.h>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/string.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/twist.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <tf2_ros/transform_broadcaster.h>
 
+#include <string>
 
 class KobukiSimulator
+      : public rclcpp::Node
 {
 public:
 
-  KobukiSimulator( float initial_x = 1.0,
+  KobukiSimulator( std::string node_name,
+                   float initial_x = 1.0,
                    float initial_y = 1.0,
                    float initial_yaw = 0.0 );
 
@@ -42,19 +45,19 @@ private:
 
   bool m_reset;
 
-  ros::NodeHandle m_node_handle;
+  rclcpp::Node::SharedPtr m_node_handle;
 
-  ros::Subscriber m_cmd_vel_sub;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr m_cmd_vel_sub;
 
-  ros::Subscriber m_active_sub;
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr m_active_sub;
 
-  ros::Subscriber m_initial_pose_sub;
+  rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr m_initial_pose_sub;
 
-  ros::Subscriber m_initial_pose_with_cov_sub;
+  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr m_initial_pose_with_cov_sub;
 
-  ros::Publisher m_odom_pub;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_odom_pub;
 
-  ros::Publisher m_real_pose_pub;
+  rclcpp::Publisher<geometry_msgs::msg::Pose>::SharedPtr m_real_pose_pub;
 
   void
   set_initial_pose( const geometry_msgs::Pose::ConstPtr& initial_pose );

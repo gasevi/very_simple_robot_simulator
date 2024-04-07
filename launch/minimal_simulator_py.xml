@@ -1,0 +1,16 @@
+<launch>
+
+  <group>
+    <push_ros_namespace namespace="cmd_vel_mux"/>
+    <include file="$(find-pkg-share cmd_vel_mux)/launch/cmd_vel_mux-launch.py" />
+  </group>
+
+  <node pkg="very_simple_robot_simulator" name="kobuki_simulator" exec="kobuki_simulator.py" output="screen" >
+    <remap from="/cmd_vel" to="/cmd_vel_mux/cmd_vel" />
+    <remap from="/active" to="/cmd_vel_mux/active" />-->
+    <param name="initial_x" value="0.5" />
+    <param name="initial_y" value="0.5" />
+    <param name="initial_yaw" value="0.0" />
+  </node>
+
+</launch>

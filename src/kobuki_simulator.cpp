@@ -1,16 +1,18 @@
 #include "kobuki_simulator.h"
 
-#include <tf/transform_datatypes.h>
-#include <tf/transform_broadcaster.h>
-#include <geometry_msgs/TransformStamped.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/msg/transform_stamped.h>
 
 using namespace std;
 
 
-KobukiSimulator::KobukiSimulator( float initial_x,
+KobukiSimulator::KobukiSimulator( string node_name,
+                                  float initial_x,
                                   float initial_y,
                                   float initial_yaw )
-: m_initial_x( initial_x ),
+: Node( node_name ),
+  m_initial_x( initial_x ),
   m_initial_y( initial_y ),
   m_initial_yaw( initial_yaw ),
   m_simulate_ground_friction( true ),
@@ -28,14 +30,14 @@ KobukiSimulator::KobukiSimulator( float initial_x,
   geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw( m_initial_yaw );
   m_current_pose.orientation = quat;
 
-  m_cmd_vel_sub = m_node_handle.subscribe( "cmd_vel", 1, &KobukiSimulator::move, this );
-  m_active_sub = m_node_handle.subscribe( "cmd_vel_active", 1, &KobukiSimulator::velocity_state, this );
+  m_cmd_vel_sub = this->create_subscription<geometry_msgs::msg::Twist>( "cmd_vel", 1, std::bind(&KobukiSimulator::move, this, _1) );
+  m_active_sub = this->create_subscription<std_msgs::msg::String>( "cmd_vel_active", 1, std::bind(&KobukiSimulator::velocity_state, this, _1) );
   //m_cmd_vel_sub = m_node_handle.subscribe( "yocs_cmd_vel_mux/output/cmd_vel", 1, &KobukiSimulator::move, this );
   //m_active_sub = m_node_handle.subscribe( "yocs_cmd_vel_mux/active", 1, &KobukiSimulator::velocity_state, this );
-  m_initial_pose_sub = m_node_handle.subscribe( "initial_pose", 1, &KobukiSimulator::set_initial_pose, this );
-  m_initial_pose_with_cov_sub = m_node_handle.subscribe( "initialpose", 1, &KobukiSimulator::set_initial_pose_with_cov, this );
-  m_odom_pub = m_node_handle.advertise<nav_msgs::Odometry>( "odom", 10 );
-  m_real_pose_pub = m_node_handle.advertise<geometry_msgs::Pose>( "real_pose", 1 );
+  m_initial_pose_sub = this->create_subscription<geometry_msgs::msg::Pose>( "initial_pose", 1, std::bind(&KobukiSimulator::set_initial_pose, this, _1) );
+  m_initial_pose_with_cov_sub = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>( "initialpose", 1, std::bind(&KobukiSimulator::set_initial_pose_with_cov, this, _1) );
+  m_odom_pub = this->create_publisher<nav_msgs::msg::Odometry>( "odom", 10 );
+  m_real_pose_pub = this->create_publisher<geometry_msgs::msg::Pose>( "real_pose", 1 );
 }
 
 void
