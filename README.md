@@ -13,6 +13,7 @@ cd <workspace_path>/src
 git clone https://github.com/kobuki-base/cmd_vel_mux
 git clone --branch humble https://github.com/gasevi/very_simple_robot_simulator.git
 cd ..
+sudo apt update
 rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO -y
 sudo apt install -y ros-humble-image-transport ros-humble-tf-transformations ros-humble-cv-bridge libcv-bridge-dev python3-pil.imagetk python3-opencv
 colcon build --symlink-install
