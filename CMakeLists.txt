@@ -25,8 +25,9 @@ include_directories(
                    )
 
 # Create Cpp executable
-add_executable( kinect_simulator src/kinect_simulator.cpp
-                                 src/kinect_simulator_node.cpp )
+add_executable( kinect_simulator src/kinect_simulator_node.cpp
+                                 src/kinect_simulator.cpp
+                                 src/vsrs_utils.cpp )
 
 ament_target_dependencies( kinect_simulator rclcpp
                                             geometry_msgs

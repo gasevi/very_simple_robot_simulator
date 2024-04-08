@@ -9,14 +9,14 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
-  <buildtool_depend>ros-humble-image-transport</buildtool_depend>
   <buildtool_depend>libopencv-dev</buildtool_depend>
-  <buildtool_depend>libcv-bridge-dev</buildtool_depend>
   <buildtool_depend>python3-transforms3d</buildtool_depend>
+  <!--<buildtool_depend>ros-humble-image-transport</buildtool_depend>
+  <buildtool_depend>libcv-bridge-dev</buildtool_depend>
   <buildtool_depend>ros-humble-tf-transformations</buildtool_depend>
   <buildtool_depend>python3-pil.imagetk</buildtool_depend>
   <buildtool_depend>python3-opencv</buildtool_depend>
-  <buildtool_depend>python3-cv-bridge</buildtool_depend>
+  <buildtool_depend>ros-humble-cv-bridge</buildtool_depend>-->
 
   <depend>rclcpp</depend>
   <depend>rclpy</depend>

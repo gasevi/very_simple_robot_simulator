@@ -429,7 +429,7 @@ class WorldStateGUI( Node, Frame ):
         y1 = int( y - self.robot_radio_pix * np.sin( yaw ) )
         coords = [x, y, x1, y1]
         self.canvas.coords( 'robot_direction', *coords )
-      self.get_logger().info( 'x: %d, y: %d, yaw: %f' % ( x, y, yaw ) )
+      #self.get_logger().info( 'x: %d, y: %d, yaw: %f' % ( x, y, yaw ) )
 
   def load_map( self, yaml_file ):
     with open( yaml_file ) as fd:
