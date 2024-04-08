@@ -9,6 +9,7 @@ A very simple robot simulator that uses cmd_vel_mux nodelet and implements a Kin
 ## <span style="font-size: 4em;">Install</span>
 
 ```sh
+source /opt/ros/humble/setup.bash
 cd <workspace_path>/src
 git clone https://github.com/kobuki-base/cmd_vel_mux
 git clone --branch humble https://github.com/gasevi/very_simple_robot_simulator.git
