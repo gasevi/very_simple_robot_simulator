@@ -224,6 +224,8 @@ class WorldStateGUI( Node, Frame ):
 
   def __init__( self, width = 500, height = 290, resolution = 0.01 ):
     super().__init__( 'world_state_gui' )
+    self.declare_parameter( 'map_file', rclpy.Parameter.Type.STRING )
+
     self.wall_thick = 3
     self.width = width + 2 * self.wall_thick
     self.height = height + 2 * self.wall_thick
@@ -288,13 +290,15 @@ class WorldStateGUI( Node, Frame ):
     #rospy.Subscriber( 'real_pose', Pose, self.update_robot_pose )
     self.create_subscription( Pose, '/real_pose', self.update_robot_pose, 1 )
 
-    if self.has_parameter( '/world_state_gui/map_file' ):
-      yaml_file = rclpy.get_parameter( '/world_state_gui/map_file' )
+    try:
+      yaml_file = self.get_parameter( 'map_file' ).get_parameter_value().string_value
       self.get_logger().info( 'Loading map file: %s' % (yaml_file) )
       if os.path.isfile( yaml_file ):
         self.load_map( yaml_file )
       else:
         self.get_logger().error( 'Map file [%s] does not exist' % (yaml_file) )
+    except rclpy.exceptions.ParameterUninitializedException:
+      pass
     self.update_map()
     self.get_logger().info( 'World State GUI initialized' )
 
@@ -433,7 +437,7 @@ class WorldStateGUI( Node, Frame ):
 
   def load_map( self, yaml_file ):
     with open( yaml_file ) as fd:
-      metadata = yaml.load( fd )
+      metadata = yaml.load( fd, Loader = yaml.FullLoader )
 
     if not os.path.isabs( metadata['image'] ):
       map_path = os.path.dirname( yaml_file )
