@@ -12,6 +12,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
@@ -39,6 +40,20 @@ ament_target_dependencies( kinect_simulator rclcpp
                                             cv_bridge
                                             OpenCV )
 
+add_executable( lidar_simulator src/lidar_simulator_node.cpp
+                                src/lidar_simulator.cpp
+                                src/vsrs_utils.cpp )
+
+ament_target_dependencies( lidar_simulator rclcpp
+                                           geometry_msgs
+                                           std_msgs
+                                           nav_msgs
+                                           tf2
+                                           tf2_geometry_msgs
+                                           image_transport
+                                           cv_bridge
+                                           OpenCV )
+
 #add_executable( kobuki_simulator src/kobuki_simulator.cpp
 #                                 src/kobuki_simulator_node.cpp)
 
@@ -50,6 +65,7 @@ ament_target_dependencies( kinect_simulator rclcpp
 #                                            tf2_geometry_msgs )
 
 install(TARGETS kinect_simulator DESTINATION lib/${PROJECT_NAME})
+install(TARGETS lidar_simulator DESTINATION lib/${PROJECT_NAME})
 #install(TARGETS kobuki_simulator DESTINATION lib/${PROJECT_NAME})
 
 #add_executable(minimal_opencv_ros2_node src/minimal_opencv_ros2_node.cpp)

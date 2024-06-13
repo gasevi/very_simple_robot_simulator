@@ -3,20 +3,23 @@
 
 #include "vsrs_utils.h"
 
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <image_transport/image_transport.h>
-#include <geometry_msgs/Pose.h>
-#include <nav_msgs/OccupancyGrid.h>
+#include <geometry_msgs/msg/pose.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp>
 
 #include <opencv2/opencv.hpp>
 
 #include <vector>
+#include <string>
 
 class LidarSimulator
+      : public rclcpp::Node
 {
 public:
 
-  LidarSimulator( bool publish_2d_map = false );
+  LidarSimulator( std::string node_name, bool publish_2d_map = false );
 
 private:
 
@@ -54,15 +57,15 @@ private:
 
   std::vector<double> m_horizontal_beam_angles;
 
-  ros::NodeHandle m_node_handle;
+  rclcpp::Node::SharedPtr m_node_handle;
 
   image_transport::ImageTransport m_image_transport;
 
-  ros::Subscriber m_real_pose_sub;
+  rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr m_real_pose_sub;
 
-  ros::Subscriber m_map_sub;
+  rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr m_map_sub;
 
-  ros::Publisher m_scan_pub;
+  rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr m_scan_pub;
 
   image_transport::Publisher m_lidar_2dmap_pub;
 
@@ -78,9 +81,9 @@ private:
                      float robot_pose_yaw,
                      std::vector<float>& distance_sensor );
 
-  void new_pose( const geometry_msgs::Pose::ConstPtr& pose_msg );
+  void new_pose( const geometry_msgs::msg::Pose::ConstPtr& pose_msg );
 
-  void set_map( const nav_msgs::OccupancyGrid::ConstPtr& msg );
+  void set_map( const nav_msgs::msg::OccupancyGrid::ConstPtr& msg );
 
   void send_laser_scan( const std::vector<float>& msg );
 

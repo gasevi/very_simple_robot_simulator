@@ -3,20 +3,22 @@
 
 #include <random>
 #include <ros/console.h>
-#include <tf/transform_datatypes.h>
-#include <sensor_msgs/LaserScan.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <sensor_msgs/msg/laser_scan.h>
 #include <cv_bridge/cv_bridge.h>
 
 using namespace std;
 using namespace cv;
+using std::placeholders::_1;
 
 
-LidarSimulator::LidarSimulator( bool publish_2d_map )
-: m_effective_hfov( kDefaultHFov ),
+LidarSimulator::LidarSimulator( string node_name, bool publish_2d_map )
+: Node( node_name ),
+  m_effective_hfov( kDefaultHFov ),
   m_map_resolution( 0.01 ),     // [m/pix]
   m_z_max( kDefaultViewDepth ), // [m]
   m_std_error( 0.005 ),         // [m]
-  m_seq( 0 ),
   m_converter( 0, 0, m_map_resolution, 296 ),
   m_global_map( 296, 506, CV_8UC1, Scalar( 255 ) ),
   m_lidar_fov( M_PI ),
@@ -24,15 +26,8 @@ LidarSimulator::LidarSimulator( bool publish_2d_map )
   m_image_transport( m_node_handle ),
   m_publish_2d_map( publish_2d_map )
 {
-  if( m_node_handle.hasParam( "/lidar_simulator/effective_hfov" ) )
-  {
-    m_node_handle.getParam( "/lidar_simulator/effective_hfov", m_effective_hfov );
-  }
-
-  if( m_node_handle.hasParam( "/lidar_simulator/view_depth" ) )
-  {
-    m_node_handle.getParam( "/lidar_simulator/view_depth", m_z_max );
-  }
+  this->declare_parameter( "/lidar_simulator/effective_hfov", m_effective_hfov );
+  this->declare_parameter( "/lidar_simulator/view_depth", m_z_max );
 
   m_hfov = m_effective_hfov*M_PI/180.0; // [rad]
   m_num_horizontal_scan = m_effective_hfov;
@@ -40,13 +35,20 @@ LidarSimulator::LidarSimulator( bool publish_2d_map )
   m_view_depth_pix = static_cast<int>( m_z_max / m_map_resolution );
   m_horizontal_beam_angles = linspace( m_hfov/2.0, -m_hfov/2.0, m_num_horizontal_scan );
 
-  m_map_sub = m_node_handle.subscribe( "map", 1, &LidarSimulator::set_map, this );
-  m_real_pose_sub = m_node_handle.subscribe( "/real_pose", 1, &LidarSimulator::new_pose, this );
-  m_scan_pub = m_node_handle.advertise<sensor_msgs::LaserScan>( "/scan", 10 );
+  m_map_sub = this->create_subscription<nav_msgs::msg::OccupancyGrid>( "map",
+                                                                       1,
+                                                                       std::bind(&LidarSimulator::set_map, this, _1) );
+  m_real_pose_sub = this->create_subscription<geometry_msgs::msg::Pose>( "/real_pose",
+                                                                         1,
+                                                                         std::bind(&LidarSimulator::new_pose, this, _1) );
+  m_scan_pub = this->create_publisher<sensor_msgs::msg::LaserScan>( "/scan", 10 );
+
+/*
   if( m_publish_2d_map )
   {
     m_lidar_2dmap_pub = m_image_transport.advertise( "camera/depth/lidar_in_map", 1 );
   }
+*/
 }
 
 void
@@ -220,13 +222,13 @@ LidarSimulator::build_pixel_lidar( int robot_pose_x,
        color[1] = 0;
        color[2] = 0;
     }
-    sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage( std_msgs::Header(), "rgb8", map_to_send ).toImageMsg();
-    m_lidar_2dmap_pub.publish( image_msg );
+    sensor_msgs::msg::Image::SharedPtr image_msg = cv_bridge::CvImage( std_msgs::msg::Header(), "rgb8", map_to_send ).toImageMsg();
+    m_lidar_2dmap_pub.publish( *image_msg.get() );
   }
 }
 
 void
-LidarSimulator::new_pose( const geometry_msgs::Pose::ConstPtr& pose_msg )
+LidarSimulator::new_pose( const geometry_msgs::msg::Pose::ConstPtr& pose_msg )
 {
   pair<int, int> pix_pose = m_converter.metric2pixel( pose_msg->position.x, pose_msg->position.y );
   if( pix_pose.second < 0 || m_global_map.rows <= pix_pose.second ||
@@ -238,11 +240,11 @@ LidarSimulator::new_pose( const geometry_msgs::Pose::ConstPtr& pose_msg )
     return;
   }
 
-  tf::Quaternion q( pose_msg->orientation.x,
-                    pose_msg->orientation.y,
-                    pose_msg->orientation.z,
-                    pose_msg->orientation.w );
-  tf::Matrix3x3 m( q );
+  tf2::Quaternion q( pose_msg->orientation.x,
+                     pose_msg->orientation.y,
+                     pose_msg->orientation.z,
+                     pose_msg->orientation.w );
+  tf2::Matrix3x3 m( q );
   double roll, pitch, yaw;
   m.getRPY( roll, pitch, yaw );
 
@@ -283,10 +285,8 @@ LidarSimulator::new_pose( const geometry_msgs::Pose::ConstPtr& pose_msg )
 void
 LidarSimulator::send_laser_scan( const vector<float>& scans )
 {
-  m_seq += 1;
-  sensor_msgs::LaserScan laserScan;
-  laserScan.header.seq = m_seq;
-  laserScan.header.stamp = ros::Time::now();
+  sensor_msgs::msg::LaserScan laserScan;
+  laserScan.header.stamp = rclcpp::Clock().now();
   laserScan.header.frame_id = "base_link";
   laserScan.angle_min = -m_lidar_fov/2.0;
   laserScan.angle_max = m_lidar_fov/2.0;
@@ -304,15 +304,15 @@ LidarSimulator::send_laser_scan( const vector<float>& scans )
     laserScan.intensities[i] = 0;
   }
 
-  m_scan_pub.publish( laserScan );
+  m_scan_pub->publish( laserScan );
 }
 
 void
-LidarSimulator::set_map( const nav_msgs::OccupancyGrid::ConstPtr& msg )
+LidarSimulator::set_map( const nav_msgs::msg::OccupancyGrid::ConstPtr& msg )
 {
-  std_msgs::Header header = msg->header;
-  nav_msgs::MapMetaData info = msg->info;
-  ROS_INFO( "New map received (%d, %d, %f)", info.width, info.height, info.resolution );
+  std_msgs::msg::Header header = msg->header;
+  nav_msgs::msg::MapMetaData info = msg->info;
+  RCLCPP_INFO( get_logger(), "New map received (%d, %d, %f)", info.width, info.height, info.resolution );
   m_map_resolution = info.resolution;
   m_global_map.release();
   m_global_map.create( info.height, info.width, CV_8UC1 );
