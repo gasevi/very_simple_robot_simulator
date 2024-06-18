@@ -15,17 +15,28 @@ class KobukiSimulator( Node ):
   def __init__( self, initial_x = 1.0, initial_y = 1.0, initial_yaw = 0.0 ):
     super().__init__( 'kobuki_simulator' )
     self.get_logger().info( 'Initializing Kobuki Simulator' )
-
-    if self.has_parameter( '/kobuki_simulator/initial_x' ):
-      initial_x = self.get_parameter( '/kobuki_simulator/initial_x' )
-    if self.has_parameter( '/kobuki_simulator/initial_y' ):
-      initial_y = self.get_parameter( '/kobuki_simulator/initial_y' )
-    if self.has_parameter( '/kobuki_simulator/initial_yaw' ):
-      initial_yaw = self.get_parameter( '/kobuki_simulator/initial_yaw' )
+    self.declare_parameter( 'initial_x', rclpy.Parameter.Type.DOUBLE )
+    self.declare_parameter( 'initial_y', rclpy.Parameter.Type.DOUBLE )
+    self.declare_parameter( 'initial_yaw', rclpy.Parameter.Type.DOUBLE )
 
     self.initial_x = initial_x
+    try:
+      self.initial_x = self.get_parameter( 'initial_x' ).get_parameter_value().double_value
+    except rclpy.exceptions.ParameterUninitializedException:
+      pass
+
     self.initial_y = initial_y
+    try:
+      self.initial_y = self.get_parameter( 'initial_y' ).get_parameter_value().double_value
+    except rclpy.exceptions.ParameterUninitializedException:
+      pass
+
     self.initial_yaw = initial_yaw
+    try:
+      self.initial_yaw = self.get_parameter( 'initial_yaw' ).get_parameter_value().double_value
+    except rclpy.exceptions.ParameterUninitializedException:
+      pass
+
     self.real_pose_publish_rate = 30.0 # [Hz]
     self.simulate_ground_friction = True
     self.reset = False
