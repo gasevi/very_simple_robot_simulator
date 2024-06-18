@@ -2,7 +2,6 @@
 #include "vsrs_utils.h"
 
 #include <random>
-#include <ros/console.h>
 #include <tf2/transform_datatypes.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <sensor_msgs/msg/laser_scan.h>
