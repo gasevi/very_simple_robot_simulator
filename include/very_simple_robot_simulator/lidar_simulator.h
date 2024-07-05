@@ -24,7 +24,7 @@ public:
 private:
 
   static
-  constexpr float kDefaultHFov = 57; // [deg]
+  constexpr float kDefaultHFov = 57.0; // [deg]
 
   static
   constexpr float kDefaultViewDepth = 4.0; // [m]

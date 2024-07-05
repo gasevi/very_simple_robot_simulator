@@ -25,8 +25,14 @@ LidarSimulator::LidarSimulator( string node_name, bool publish_2d_map )
   m_image_transport( m_node_handle ),
   m_publish_2d_map( publish_2d_map )
 {
-  this->declare_parameter( "/lidar_simulator/effective_hfov", m_effective_hfov );
-  this->declare_parameter( "/lidar_simulator/view_depth", m_z_max );
+  this->declare_parameter( "effective_hfov", rclcpp::PARAMETER_DOUBLE );
+  this->declare_parameter( "view_depth", rclcpp::PARAMETER_DOUBLE );
+
+  rclcpp::Parameter double_param;
+  this->get_parameter_or( "effective_hfov", double_param, rclcpp::Parameter( "effective_hfov", kDefaultHFov ) );
+  m_effective_hfov = double_param.as_double();
+  this->get_parameter_or( "view_depth", double_param, rclcpp::Parameter( "view_depth", kDefaultViewDepth ) );
+  m_z_max = double_param.as_double();
 
   m_hfov = m_effective_hfov*M_PI/180.0; // [rad]
   m_num_horizontal_scan = m_effective_hfov;
@@ -34,7 +40,7 @@ LidarSimulator::LidarSimulator( string node_name, bool publish_2d_map )
   m_view_depth_pix = static_cast<int>( m_z_max / m_map_resolution );
   m_horizontal_beam_angles = linspace( m_hfov/2.0, -m_hfov/2.0, m_num_horizontal_scan );
 
-  m_map_sub = this->create_subscription<nav_msgs::msg::OccupancyGrid>( "map",
+  m_map_sub = this->create_subscription<nav_msgs::msg::OccupancyGrid>( "world_map",
                                                                        1,
                                                                        std::bind(&LidarSimulator::set_map, this, _1) );
   m_real_pose_sub = this->create_subscription<geometry_msgs::msg::Pose>( "/real_pose",
