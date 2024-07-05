@@ -37,9 +37,14 @@ class KobukiSimulator( Node ):
     except rclpy.exceptions.ParameterUninitializedException:
       pass
 
-    self.real_pose_publish_rate = 30.0 # [Hz]
+    self.real_pose_publish_rate = 5.0 # [Hz]
     self.simulate_ground_friction = True
     self.reset = False
+
+    # Odometry pose covariace
+    self.cov_x = 1e-05
+    self.cov_y = 1e-05
+    self.cov_z = 1e-03
 
     pose_position = Point( x = self.initial_x, y = self.initial_y, z = 0.0 )
     q = quaternion_from_euler( 0.0, 0.0, self.initial_yaw )
@@ -96,8 +101,8 @@ class KobukiSimulator( Node ):
   def publish_odom( self, x, y, yaw, vx, vy, vyaw, current_time ):
     t = TransformStamped()
     t.header.stamp = current_time.to_msg()
-    t.header.frame_id = 'base_link'
-    t.child_frame_id = 'odom'
+    t.header.frame_id = 'odom'
+    t.child_frame_id = 'base_link'
 
     t.transform.translation.x = x
     t.transform.translation.y = y
@@ -115,15 +120,29 @@ class KobukiSimulator( Node ):
     odom = Odometry()
     odom.header.stamp = current_time.to_msg()
     odom.header.frame_id = 'odom'
+    odom.child_frame_id = 'base_link'
 
     # set the position
     odom.pose.pose = Pose( position = Point( x = x, y = y, z = 0.0 ),
                            orientation = Quaternion( x = q[0], y = q[1], z = q[2], w = q[3] ) )
 
+    odom.pose.covariance = [ self.cov_x, 0.0, 0.0, 0.0, 0.0, 0.0,
+                             0.0, self.cov_y, 0.0, 0.0, 0.0, 0.0,
+                             0.0, 0.0, 10000000.0, 0.0, 0.0, 0.0,
+                             0.0, 0.0, 0.0, 10000000.0, 0.0, 0.0,
+                             0.0, 0.0, 0.0, 0.0, 10000000.0, 0.0,
+                             0.0, 0.0, 0.0, 0.0, 0.0, self.cov_z ]
+
     # set the velocity
-    odom.child_frame_id = 'base_link'
     odom.twist.twist = Twist( linear = Vector3( x = vx, y = vy, z = 0.0 ),
                               angular = Vector3( x = 0.0, y = 0.0, z = vyaw ) )
+
+    odom.twist.covariance = [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
 
     self.pub_odom.publish( odom )
 
