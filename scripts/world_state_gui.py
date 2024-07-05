@@ -282,9 +282,9 @@ class WorldStateGUI( Node, Frame ):
 
     latching_qos = QoSProfile( depth = 1, durability = DurabilityPolicy.TRANSIENT_LOCAL )
     #self.pub_map_metadata = rospy.Publisher( 'map_metadata', MapMetaData, queue_size = 1, latch = True )
-    self.pub_map_metadata = self.create_publisher( MapMetaData, '/map_metadata', qos_profile = latching_qos )
+    self.pub_map_metadata = self.create_publisher( MapMetaData, '/world_map_metadata', qos_profile = latching_qos )
     #self.pub_map = rospy.Publisher( 'map', OccupancyGrid, queue_size = 1, latch = True )
-    self.pub_map = self.create_publisher( OccupancyGrid, '/map', qos_profile = latching_qos )
+    self.pub_map = self.create_publisher( OccupancyGrid, '/world_map', qos_profile = latching_qos )
     #self.pub_initial_pose = rospy.Publisher( 'initial_pose', Pose, queue_size = 1 )
     self.pub_initial_pose = self.create_publisher( Pose, '/initial_pose', 10 )
     #rospy.Subscriber( 'real_pose', Pose, self.update_robot_pose )
@@ -507,7 +507,7 @@ class WorldStateGUI( Node, Frame ):
 
     self.pub_map_metadata.publish( map_metadata )
 
-    og_header = Header( stamp = self.get_clock().now().to_msg(), frame_id = 'map' )
+    og_header = Header( stamp = self.get_clock().now().to_msg(), frame_id = 'world_map' )
     og_data = np.array( background_image )
     og_data = ( 100 - ( og_data / 255.0 ) * 100 ).astype( np.uint8 )
     og_data = np.flip( og_data, axis = 0 )
@@ -518,7 +518,7 @@ class WorldStateGUI( Node, Frame ):
     t = TransformStamped()
     t.header.stamp = self.get_clock().now().to_msg()
     t.header.frame_id = 'world'
-    t.child_frame_id = 'map'
+    t.child_frame_id = 'world_map'
 
     t.transform.translation.x = 0.0
     t.transform.translation.y = 0.0
