@@ -34,7 +34,7 @@ KinectSimulator::KinectSimulator( string node_name, bool publish_2d_map )
   m_real_pose_sub = this->create_subscription<geometry_msgs::msg::Pose>( "real_pose",
                                                                          1,
                                                                          std::bind(&KinectSimulator::new_pose, this, _1) );
-  m_map_sub = this->create_subscription<nav_msgs::msg::OccupancyGrid>( "map",
+  m_map_sub = this->create_subscription<nav_msgs::msg::OccupancyGrid>( "world_map",
                                                                        1,
                                                                        std::bind(&KinectSimulator::set_map, this, _1) );
   //m_depth_image_pub = m_image_transport.advertise( "camera/depth/image_raw", 1 );
