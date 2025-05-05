@@ -61,8 +61,8 @@ class KobukiSimulator( object ):
                                                 self.current_pose.orientation.z,
                                                 self.current_pose.orientation.w ) )
 
-    delta_x = (vx * np.cos( yaw + self.initial_yaw ) - vy * np.sin( yaw + self.initial_yaw )) * dt
-    delta_y = (vx * np.sin( yaw + self.initial_yaw ) + vy * np.cos( yaw + self.initial_yaw )) * dt
+    delta_x = (vx * np.cos( yaw ) - vy * np.sin( yaw )) * dt
+    delta_y = (vx * np.sin( yaw ) + vy * np.cos( yaw )) * dt
     if self.simulate_ground_friction:
       delta_yaw = 0.9 * vyaw * dt
     else:
@@ -122,8 +122,8 @@ class KobukiSimulator( object ):
 
       self.update_real_pose( vx, vy, vyaw, dt )
 
-      delta_x = (vx * np.cos( yaw + self.initial_yaw ) - vy * np.sin( yaw + self.initial_yaw )) * dt
-      delta_y = (vx * np.sin( yaw + self.initial_yaw ) + vy * np.cos( yaw + self.initial_yaw )) * dt
+      delta_x = (vx * np.cos( yaw ) - vy * np.sin( yaw )) * dt
+      delta_y = (vx * np.sin( yaw ) + vy * np.cos( yaw )) * dt
       if self.simulate_ground_friction:
         delta_yaw = 0.9 * vyaw * dt
       else:

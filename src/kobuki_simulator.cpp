@@ -82,8 +82,8 @@ KobukiSimulator::update_real_pose( float vx, float vy, float vyaw, float dt )
   double roll, pitch, yaw;
   m.getRPY( roll, pitch, yaw );
 
-  float delta_x = (vx * cos( yaw + m_initial_yaw ) - vy * sin( yaw + m_initial_yaw )) * dt;
-  float delta_y = (vx * sin( yaw + m_initial_yaw ) + vy * cos( yaw + m_initial_yaw )) * dt;
+  float delta_x = (vx * cos( yaw ) - vy * sin( yaw )) * dt;
+  float delta_y = (vx * sin( yaw ) + vy * cos( yaw )) * dt;
   float delta_yaw = 0;
   if( m_simulate_ground_friction )
   {
@@ -175,8 +175,8 @@ KobukiSimulator::main_loop()
 
     update_real_pose( vx, vy, vyaw, dt );
 
-    delta_x = (vx * cos( yaw + m_initial_yaw ) - vy * sin( yaw + m_initial_yaw )) * dt;
-    delta_y = (vx * sin( yaw + m_initial_yaw ) + vy * cos( yaw + m_initial_yaw )) * dt;
+    delta_x = (vx * cos( yaw ) - vy * sin( yaw )) * dt;
+    delta_y = (vx * sin( yaw ) + vy * cos( yaw )) * dt;
     if( m_simulate_ground_friction )
     {
       delta_yaw = 0.9 * vyaw * dt;
